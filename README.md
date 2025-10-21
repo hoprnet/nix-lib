@@ -15,7 +15,8 @@ cross-compilation, Docker images, and comprehensive development environments.
 - **Multi-architecture support**: Create OCI manifest lists for automatic
   platform selection
 - **Development shells**: Rich development environments with all necessary tools
-- **Code formatting**: Integrated treefmt configuration for multiple languages
+- **Code formatting**: Integrated treefmt configuration via flake module
+- **Man page generation**: Automatic manual page creation from binaries
 - **Utility apps**: Docker upload scripts, security audits, and more
 
 ## Quick Start
@@ -28,12 +29,20 @@ cross-compilation, Docker images, and comprehensive development environments.
     nixpkgs.url = "github:NixOS/nixpkgs/release-25.05";
     nix-lib.url = "github:hoprnet/nix-lib";
     # For local development:
-    # nix-lib.url = "path:../nix-lib";
+    # nix-lib.url = "git+file:../nix-lib";
+
+    # Import the flake module for automatic treefmt configuration
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
-  outputs = { self, nixpkgs, nix-lib, ... }: {
-    # Your flake outputs
-  };
+  outputs = { self, nixpkgs, nix-lib, flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        nix-lib.flakeModules.default  # Provides treefmt integration
+      ];
+
+      # Your flake configuration
+    };
 }
 ```
 
@@ -280,9 +289,42 @@ devShell = lib.mkDevShell {
 
 ### Code Formatting
 
+The library provides a flake-parts module that automatically configures treefmt.
+
+#### Using the Flake Module
+
+Import `nix-lib.flakeModules.default` to get automatic treefmt configuration:
+
+```nix
+{
+  imports = [ nix-lib.flakeModules.default ];
+
+  perSystem = { ... }: {
+    nix-lib.treefmt = {
+      globalExcludes = [ "generated/*" "vendor/*" ];
+      extraFormatters = {
+        settings.formatter.custom = {
+          command = "my-formatter";
+          includes = [ "*.custom" ];
+        };
+      };
+    };
+  };
+}
+```
+
+The module automatically configures formatters for:
+- Rust (rustfmt with nightly)
+- Nix (nixfmt-rfc-style)
+- TOML (taplo with alignment and sorting)
+- YAML (yamlfmt)
+- JSON and Markdown (prettier)
+- Shell scripts (shfmt)
+- Python (ruff)
+
 #### `mkTreefmtConfig`
 
-Create a treefmt configuration (requires treefmt-nix flake module).
+Low-level function for manual treefmt configuration (used internally by the module).
 
 ```nix
 treefmt = lib.mkTreefmtConfig {
@@ -345,6 +387,23 @@ apps.audit = lib.mkAuditApp;
 
 # Usage:
 # nix run .#audit
+```
+
+### Documentation
+
+#### `mkManPage`
+
+Generate a manual page from a binary using help2man.
+
+```nix
+manPage = lib.mkManPage {
+  pname = "my-app";
+  binary = myPackage;
+  description = "My application description";
+};
+
+# The man page will be in:
+# ${manPage}/share/man/man1/my-app.1.gz
 ```
 
 ## Complete Example
