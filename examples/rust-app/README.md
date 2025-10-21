@@ -1,6 +1,7 @@
 # Rust App Example
 
-This example demonstrates how to use the HOPR Nix Library to build a Rust application with cross-compilation, Docker images, and development environments.
+This example demonstrates how to use the HOPR Nix Library to build a Rust
+application with cross-compilation, Docker images, and development environments.
 
 ## Features Demonstrated
 
@@ -105,6 +106,7 @@ nix run .#audit
 ### Inputs
 
 The example uses these inputs:
+
 - `nixpkgs`: Standard Nix packages
 - `nix-lib`: The HOPR Nix Library (from parent directory)
 - `flake-parts`: For better flake organization
@@ -119,6 +121,7 @@ builders = lib.mkRustBuilders { };
 ```
 
 This provides:
+
 - `builders.local` - Local platform
 - `builders.localNightly` - Local with nightly Rust
 - `builders.x86_64-linux` - x86_64 Linux static
@@ -138,11 +141,13 @@ sources = {
 };
 ```
 
-This improves build caching by separating dependency resolution from the main build.
+This improves build caching by separating dependency resolution from the main
+build.
 
 ### Packages
 
 Multiple package variants are defined:
+
 - `default` - Local release build
 - `dev` - Development build (faster, with debug symbols)
 - `x86_64-linux`, `aarch64-linux`, etc. - Cross-compiled packages
@@ -151,6 +156,7 @@ Multiple package variants are defined:
 ### Development Shell
 
 The dev shell includes:
+
 - Rust toolchain
 - Build tools (cargo, rustc, etc.)
 - Code formatters
@@ -159,6 +165,7 @@ The dev shell includes:
 ### Checks
 
 Automated checks ensure code quality:
+
 - `tests` - Run Cargo tests
 - `clippy` - Run Clippy linter
 - `formatting` - Check code formatting
@@ -172,7 +179,8 @@ To use the HOPR Nix Library in your own project:
    nix-lib.url = "github:hoprnet/nix-lib";
    ```
 
-2. **Customize builders** - Add a `rustToolchainFile` if you use `rust-toolchain.toml`:
+2. **Customize builders** - Add a `rustToolchainFile` if you use
+   `rust-toolchain.toml`:
    ```nix
    builders = lib.mkRustBuilders {
      rustToolchainFile = ./rust-toolchain.toml;

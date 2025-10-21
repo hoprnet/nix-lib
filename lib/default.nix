@@ -181,7 +181,12 @@ rec {
       extraFormatters ? { },
     }:
     import ./treefmt.nix {
-      inherit config pkgs globalExcludes extraFormatters;
+      inherit
+        config
+        pkgs
+        globalExcludes
+        extraFormatters
+        ;
     };
 
   # Utility Applications

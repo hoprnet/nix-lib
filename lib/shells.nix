@@ -31,10 +31,9 @@ let
   # Use provided Rust toolchain or default from rust-toolchain.toml or stable
   defaultRustToolchain =
     if rustToolchainFile != null then
-      (pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile).override
-        {
-          targets = [ cargoTarget ];
-        }
+      (pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
+        targets = [ cargoTarget ];
+      }
     else
       (pkgs.pkgsBuildHost.rust-bin.stable.latest.default).override {
         targets = [ cargoTarget ];
@@ -63,11 +62,7 @@ let
       [ ];
 
   # Treefmt packages (optional)
-  treefmtPackages =
-    if treefmtWrapper != null then
-      [ treefmtWrapper ] ++ treefmtPrograms
-    else
-      [ ];
+  treefmtPackages = if treefmtWrapper != null then [ treefmtWrapper ] ++ treefmtPrograms else [ ];
 
   # Core packages for all development environments
   corePackages = with pkgs; [
@@ -99,7 +94,8 @@ let
   ];
 
   # All packages combined
-  allPackages = corePackages ++ ciPackages ++ postgresPackages ++ treefmtPackages ++ linuxPackages ++ extraPackages;
+  allPackages =
+    corePackages ++ ciPackages ++ postgresPackages ++ treefmtPackages ++ linuxPackages ++ extraPackages;
 
   # Shell hook with Rust version display
   defaultShellHook = ''

@@ -1,10 +1,12 @@
 # HOPR Nix Library
 
-A reusable library of Nix functions for building Rust projects with cross-compilation, Docker images, and comprehensive development environments.
+A reusable library of Nix functions for building Rust projects with
+cross-compilation, Docker images, and comprehensive development environments.
 
 ## Features
 
-- **Cross-compilation**: Build Rust binaries for multiple platforms (Linux x86_64/ARM64, macOS x86_64/ARM64)
+- **Cross-compilation**: Build Rust binaries for multiple platforms (Linux
+  x86_64/ARM64, macOS x86_64/ARM64)
 - **Static linking**: Create fully static binaries with musl on Linux
 - **Docker images**: Build optimized, layered container images
 - **Development shells**: Rich development environments with all necessary tools
@@ -245,7 +247,8 @@ apps.audit = lib.mkAuditApp;
 
 ## Complete Example
 
-See the [examples/rust-app](examples/rust-app) directory for a complete example demonstrating all features of this library.
+See the [examples/rust-app](examples/rust-app) directory for a complete example
+demonstrating all features of this library.
 
 Quick example:
 
@@ -299,14 +302,15 @@ Quick example:
 
 ## Platform Support
 
-| Platform | Native | Cross-compile | Static Linking |
-|----------|--------|---------------|----------------|
-| x86_64-linux | ✓ | ✓ | ✓ (musl) |
-| aarch64-linux | ✓ | ✓ | ✓ (musl) |
-| x86_64-darwin | ✓ | ✓* | - |
-| aarch64-darwin | ✓ | ✓* | - |
+| Platform       | Native | Cross-compile | Static Linking |
+| -------------- | ------ | ------------- | -------------- |
+| x86_64-linux   | ✓      | ✓             | ✓ (musl)       |
+| aarch64-linux  | ✓      | ✓             | ✓ (musl)       |
+| x86_64-darwin  | ✓      | ✓*            | -              |
+| aarch64-darwin | ✓      | ✓*            | -              |
 
-*Note: macOS cross-compilation must be done from a Darwin system for proper code signing.
+*Note: macOS cross-compilation must be done from a Darwin system for proper code
+signing.
 
 ## Development
 
@@ -318,6 +322,7 @@ nix develop
 ```
 
 Format code:
+
 ```bash
 nix fmt
 ```
@@ -328,4 +333,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-Contributions welcome! Please ensure all Nix files are properly formatted with `nix fmt`.
+Contributions welcome! Please ensure all Nix files are properly formatted with
+`nix fmt`.

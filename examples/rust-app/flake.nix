@@ -69,7 +69,8 @@
           rev = self.rev or "dev";
 
           # Build the package for different platforms
-          mkPackage = builder: profile:
+          mkPackage =
+            builder: profile:
             builder.callPackage lib.mkRustPackage {
               src = sources.main;
               depsSrc = sources.deps;

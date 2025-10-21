@@ -26,72 +26,117 @@
     rust-overlay.url = "github:oxalica/rust-overlay/master";
     crane.url = "github:ipetkov/crane/v0.21.0";
 
+    # Flake organization and formatting
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+
     # Input dependency optimization
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
-    {
+    inputs@{
       self,
       nixpkgs,
       flake-utils,
       rust-overlay,
       crane,
+      flake-parts,
+      treefmt-nix,
       ...
     }:
     let
       # Expose library for all systems
       # This creates a lib attribute for each system that contains all library functions
-      libForSystem = system: import ./lib/default.nix {
-        inherit nixpkgs rust-overlay crane flake-utils system;
-      };
+      libForSystem =
+        system:
+        import ./lib/default.nix {
+          inherit
+            nixpkgs
+            rust-overlay
+            crane
+            flake-utils
+            system
+            ;
+        };
     in
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        lib = libForSystem system;
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [
-            rust-overlay.overlays.default
-          ];
-        };
-      in
-      {
-        # Example packages showing how to use the library
-        # These can be used as reference implementations
-        packages = {
-          # Example: Create a simple dev shell
-          example-shell = lib.mkDevShell {
-            shellName = "Example Rust Development";
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = flake-utils.lib.defaultSystems;
+
+      imports = [
+        treefmt-nix.flakeModule
+      ];
+
+      perSystem =
+        {
+          config,
+          system,
+          pkgs,
+          ...
+        }:
+        let
+          lib = libForSystem system;
+        in
+        {
+          # Import nixpkgs with overlays
+          _module.args.pkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              rust-overlay.overlays.default
+            ];
           };
+
+          # Example packages showing how to use the library
+          packages = {
+            example-shell = lib.mkDevShell {
+              shellName = "Example Rust Development";
+            };
+          };
+
+          # Development shell for working on the library itself
+          devShells.default = pkgs.mkShell {
+            buildInputs = with pkgs; [
+              nixfmt-rfc-style
+              nil # Nix language server
+              deno # For markdown formatting
+            ];
+
+            shellHook = ''
+              echo "🔧 HOPR Nix Library Development"
+              echo "   This is a development environment for the nix-lib itself"
+              echo ""
+              echo "Available tools:"
+              echo "  - nixfmt: Format Nix files"
+              echo "  - deno fmt: Format Markdown files"
+              echo "  - nix fmt: Format all files with treefmt"
+              echo "  - nil: Nix language server for editors"
+              echo ""
+            '';
+          };
+
+          # Treefmt configuration for formatting
+          treefmt = {
+            projectRootFile = "flake.nix";
+            programs = {
+              nixfmt = {
+                enable = true;
+                package = pkgs.nixfmt-rfc-style;
+              };
+              deno = {
+                enable = true;
+                includes = [ "*.md" ];
+              };
+            };
+          };
+
+          # Formatter is provided by treefmt
+          formatter = config.treefmt.build.wrapper;
         };
 
-        # Development shell for working on the library itself
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            nixfmt-rfc-style
-            nil # Nix language server
-          ];
-
-          shellHook = ''
-            echo "🔧 HOPR Nix Library Development"
-            echo "   This is a development environment for the nix-lib itself"
-            echo ""
-            echo "Available tools:"
-            echo "  - nixfmt: Format Nix files"
-            echo "  - nil: Nix language server for editors"
-            echo ""
-          '';
-        };
-
-        # Formatter for nix-lib itself
-        formatter = pkgs.nixfmt-rfc-style;
-      }
-    )
-    // {
-      # Expose library constructor for all systems
-      # This allows users to call: nix-lib.lib.${system}
-      lib = flake-utils.lib.eachSystemMap flake-utils.lib.allSystems libForSystem;
+      flake = {
+        # Expose library constructor for all systems
+        # This allows users to call: nix-lib.lib.${system}
+        lib = flake-utils.lib.eachSystemMap flake-utils.lib.allSystems libForSystem;
+      };
     };
 }
