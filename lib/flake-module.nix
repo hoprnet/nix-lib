@@ -7,10 +7,12 @@
 # Usage in your flake:
 #   imports = [ inputs.nix-lib.flakeModules.default ];
 #
-#   nix-lib.treefmt = {
-#     globalExcludes = [ "generated/*" ];
-#     extraFormatters = {
-#       settings.formatter.custom.command = "...";
+#   perSystem = { ... }: {
+#     nix-lib.treefmt = {
+#       globalExcludes = [ "generated/*" ];
+#       extraFormatters = {
+#         settings.formatter.custom.command = "...";
+#       };
 #     };
 #   };
 
@@ -18,7 +20,7 @@
 { inputs }:
 
 # This is the actual flake-parts module
-{ lib, config, ... }:
+{ lib, ... }:
 
 {
   # Import treefmt-nix module from nix-lib's inputs
@@ -26,42 +28,41 @@
     inputs.treefmt-nix.flakeModule
   ];
 
-  # Define options for configuring treefmt
-  options = {
-    nix-lib.treefmt = {
-      globalExcludes = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        description = "Additional file patterns to exclude from formatting";
-        example = [
-          "generated/*"
-          "vendor/*"
-        ];
-      };
+  # Configure perSystem options and config
+  perSystem =
+    { config, system, pkgs, ... }:
+    let
+      # Get the nix-lib library functions for this system
+      nixLib = inputs.self.lib.${system};
+    in
+    {
+      # Define perSystem options
+      options.nix-lib.treefmt = {
+        globalExcludes = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ ];
+          description = "Additional file patterns to exclude from formatting";
+          example = [
+            "generated/*"
+            "vendor/*"
+          ];
+        };
 
-      extraFormatters = lib.mkOption {
-        type = lib.types.attrs;
-        default = { };
-        description = "Additional formatter configurations to merge with base config";
-        example = {
-          settings.formatter.custom = {
-            command = "custom-formatter";
-            includes = [ "*.custom" ];
+        extraFormatters = lib.mkOption {
+          type = lib.types.attrs;
+          default = { };
+          description = "Additional formatter configurations to merge with base config";
+          example = {
+            settings.formatter.custom = {
+              command = "custom-formatter";
+              includes = [ "*.custom" ];
+            };
           };
         };
       };
-    };
-  };
 
-  # Configure treefmt automatically
-  config = {
-    perSystem =
-      { system, pkgs, ... }:
-      let
-        # Get the nix-lib library functions for this system
-        nixLib = inputs.self.lib.${system};
-      in
-      {
+      # Apply configuration
+      config = {
         # Apply mkTreefmtConfig using the configured options
         treefmt = nixLib.mkTreefmtConfig {
           inherit config pkgs;
@@ -72,5 +73,5 @@
         # Export the formatter for nix fmt
         formatter = config.treefmt.build.wrapper;
       };
-  };
+    };
 }
