@@ -189,6 +189,40 @@ rec {
         ;
     };
 
+  # Documentation
+  # -------------
+  # Functions for generating documentation
+
+  # Create a manual page from a binary using help2man
+  mkManPage =
+    {
+      pname, # Package name for the manual page
+      binary, # Binary executable to generate documentation from
+      description, # Brief description of the tool
+    }:
+    pkgs.stdenv.mkDerivation {
+      name = "${pname}-man";
+
+      # Tools needed for generating manual pages
+      nativeBuildInputs = [ pkgs.help2man ];
+      # Ensure OpenSSL libraries are available for binary execution
+      LD_LIBRARY_PATH = "${pkgs.openssl.out}/lib:$LD_LIBRARY_PATH";
+
+      buildCommand = ''
+        mkdir -p $out/share/man/man1
+
+        # Generate man page using help2man
+        help2man \
+          --name="${description}" \
+          --no-info \
+          --output=$out/share/man/man1/${pname}.1 \
+          ${binary}/bin/${pname}
+
+        # Compress the man page
+        gzip $out/share/man/man1/${pname}.1
+      '';
+    };
+
   # Utility Applications
   # -------------------
   # Functions for creating utility scripts and apps
