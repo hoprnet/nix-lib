@@ -60,83 +60,100 @@
             ;
         };
     in
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = flake-utils.lib.defaultSystems;
+    flake-parts.lib.mkFlake { inherit inputs; } (
+      { flake-parts-lib, ... }:
+      let
+        inherit (flake-parts-lib) importApply;
 
-      imports = [
-        treefmt-nix.flakeModule
-      ];
+        # Create the reusable flake module
+        # This wraps treefmt-nix and provides auto-configuration
+        flakeModules.default = importApply ./lib/flake-module.nix { inherit inputs; };
+      in
+      {
+        systems = flake-utils.lib.defaultSystems;
 
-      perSystem =
-        {
-          config,
-          system,
-          pkgs,
-          ...
-        }:
-        let
-          lib = libForSystem system;
-        in
-        {
-          # Import nixpkgs with overlays
-          _module.args.pkgs = import nixpkgs {
-            inherit system;
-            overlays = [
-              rust-overlay.overlays.default
-            ];
-          };
+        imports = [
+          # Import the flakeModules capability
+          flake-parts.flakeModules.flakeModules
+          # Import treefmt-nix for nix-lib's own formatting (simple config)
+          treefmt-nix.flakeModule
+        ];
 
-          # Example packages showing how to use the library
-          packages = {
-            example-shell = lib.mkDevShell {
-              shellName = "Example Rust Development";
+        perSystem =
+          {
+            config,
+            system,
+            pkgs,
+            ...
+          }:
+          let
+            lib = libForSystem system;
+          in
+          {
+            # Import nixpkgs with overlays
+            _module.args.pkgs = import nixpkgs {
+              inherit system;
+              overlays = [
+                rust-overlay.overlays.default
+              ];
             };
-          };
 
-          # Development shell for working on the library itself
-          devShells.default = pkgs.mkShell {
-            buildInputs = with pkgs; [
-              nixfmt-rfc-style
-              nil # Nix language server
-              deno # For markdown formatting
-            ];
-
-            shellHook = ''
-              echo "🔧 HOPR Nix Library Development"
-              echo "   This is a development environment for the nix-lib itself"
-              echo ""
-              echo "Available tools:"
-              echo "  - nixfmt: Format Nix files"
-              echo "  - deno fmt: Format Markdown files"
-              echo "  - nix fmt: Format all files with treefmt"
-              echo "  - nil: Nix language server for editors"
-              echo ""
-            '';
-          };
-
-          # Treefmt configuration for formatting
-          treefmt = {
-            projectRootFile = "flake.nix";
-            programs = {
-              nixfmt = {
-                enable = true;
-                package = pkgs.nixfmt-rfc-style;
-              };
-              deno = {
-                enable = true;
-                includes = [ "*.md" ];
+            # Example packages showing how to use the library
+            packages = {
+              example-shell = lib.mkDevShell {
+                shellName = "Example Rust Development";
               };
             };
+
+            # Development shell for working on the library itself
+            devShells.default = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                nixfmt-rfc-style
+                nil # Nix language server
+                deno # For markdown formatting
+              ];
+
+              shellHook = ''
+                echo "🔧 HOPR Nix Library Development"
+                echo "   This is a development environment for the nix-lib itself"
+                echo ""
+                echo "Available tools:"
+                echo "  - nixfmt: Format Nix files"
+                echo "  - deno fmt: Format Markdown files"
+                echo "  - nix fmt: Format all files with treefmt"
+                echo "  - nil: Nix language server for editors"
+                echo ""
+              '';
+            };
+
+            # Treefmt configuration for formatting
+            treefmt = {
+              projectRootFile = "flake.nix";
+              programs = {
+                nixfmt = {
+                  enable = true;
+                  package = pkgs.nixfmt-rfc-style;
+                };
+                deno = {
+                  enable = true;
+                  includes = [ "*.md" ];
+                };
+              };
+            };
+
+            # Formatter is provided by treefmt
+            formatter = config.treefmt.build.wrapper;
           };
 
-          # Formatter is provided by treefmt
-          formatter = config.treefmt.build.wrapper;
+        flake = {
+          # Expose library constructor for all systems
+          # This allows users to call: nix-lib.lib.${system}
+          lib = flake-utils.lib.eachSystemMap flake-utils.lib.allSystems libForSystem;
+
+          # Export the flake module for use by other flakes
+          # Usage: imports = [ inputs.nix-lib.flakeModules.default ];
+          inherit flakeModules;
         };
-
-      flake = {
-        # Expose library constructor for all systems
-        # This allows users to call: nix-lib.lib.${system}
-        lib = flake-utils.lib.eachSystemMap flake-utils.lib.allSystems libForSystem;
-      };
-    };
+      }
+    );
 }
