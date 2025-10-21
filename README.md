@@ -322,7 +322,7 @@ nix fmt
 
 ## License
 
-Same as parent project.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
