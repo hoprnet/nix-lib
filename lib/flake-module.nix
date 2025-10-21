@@ -65,7 +65,7 @@
       config = {
         # Apply mkTreefmtConfig using the configured options
         treefmt = nixLib.mkTreefmtConfig {
-          inherit config pkgs;
+          inherit config;
           globalExcludes = config.nix-lib.treefmt.globalExcludes;
           extraFormatters = config.nix-lib.treefmt.extraFormatters;
         };
