@@ -58,9 +58,6 @@
         };
       in
       {
-        # Expose the library for this system
-        lib = lib;
-
         # Example packages showing how to use the library
         # These can be used as reference implementations
         packages = {
@@ -95,6 +92,6 @@
     // {
       # Expose library constructor for all systems
       # This allows users to call: nix-lib.lib.${system}
-      lib = flake-utils.lib.eachSystem flake-utils.lib.allSystems libForSystem;
+      lib = flake-utils.lib.eachSystemMap flake-utils.lib.allSystems libForSystem;
     };
 }
