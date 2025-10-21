@@ -245,7 +245,9 @@ apps.audit = lib.mkAuditApp;
 
 ## Complete Example
 
-See the [blokli](../blokli) project for a complete real-world example of using this library.
+See the [examples/rust-app](examples/rust-app) directory for a complete example demonstrating all features of this library.
+
+Quick example:
 
 ```nix
 {
