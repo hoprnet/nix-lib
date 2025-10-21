@@ -39,63 +39,72 @@ let
   ];
 
   allExcludes = defaultExcludes ++ globalExcludes;
-in
-{
-  # Project root detection file
-  inherit (config.flake-root) projectRootFile;
 
-  # Global exclusions - files and directories to never format
-  settings.global.excludes = allExcludes;
+  # Base treefmt configuration
+  baseConfig = {
+    # Project root detection file
+    inherit (config.flake-root) projectRootFile;
 
-  # Shell script formatting
-  programs.shfmt.enable = true;
+    # Global exclusions - files and directories to never format
+    settings.global.excludes = allExcludes;
 
-  # YAML formatting
-  programs.yamlfmt.enable = true;
-  settings.formatter.yamlfmt.settings = {
-    formatter.type = "basic";
-    formatter.max_line_length = 120;
-    formatter.trim_trailing_whitespace = true;
-    formatter.scan_folded_as_literal = true;
-    formatter.include_document_start = true;
-  };
+    # Shell script formatting
+    programs.shfmt.enable = true;
 
-  # Markdown and JSON formatting with Prettier
-  programs.prettier.enable = true;
-  settings.formatter.prettier.includes = [
-    "*.md"
-    "*.json"
-  ];
-  settings.formatter.prettier.excludes = [
-    "*.yml"
-    "*.yaml"
-  ];
+    # YAML formatting
+    programs.yamlfmt.enable = true;
+    settings.formatter.yamlfmt.settings = {
+      formatter.type = "basic";
+      formatter.max_line_length = 120;
+      formatter.trim_trailing_whitespace = true;
+      formatter.scan_folded_as_literal = true;
+      formatter.include_document_start = true;
+    };
 
-  # Rust formatting with nightly for unstable features
-  programs.rustfmt.enable = true;
-  settings.formatter.rustfmt = {
-    command = "${pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)}/bin/rustfmt";
-    options = [
-      "--config-path"
-      "."
+    # Markdown and JSON formatting with Prettier
+    programs.prettier.enable = true;
+    settings.formatter.prettier.includes = [
+      "*.md"
+      "*.json"
     ];
+    settings.formatter.prettier.excludes = [
+      "*.yml"
+      "*.yaml"
+    ];
+
+    # Rust formatting with nightly for unstable features
+    programs.rustfmt.enable = true;
+    settings.formatter.rustfmt = {
+      command = "${pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)}/bin/rustfmt";
+      options = [
+        "--config-path"
+        "."
+      ];
+    };
+
+    # Nix formatting using official Nixpkgs style
+    programs.nixfmt.enable = true;
+
+    # TOML formatting
+    # Note: We configure taplo manually via settings instead of programs.taplo.enable
+    # because we need custom options that the program module doesn't support
+    settings.formatter.taplo = {
+      command = "${pkgs.taplo}/bin/taplo";
+      includes = [ "*.toml" ];
+      options = [
+        "format"
+        "-o"
+        "align_entries=true"
+        "-o"
+        "reorder_keys=true"
+        "-o"
+        "reorder_arrays=true"
+      ];
+    };
+
+    # Python formatting with Ruff
+    programs.ruff-format.enable = true;
   };
-
-  # Nix formatting using official Nixpkgs style
-  programs.nixfmt.enable = true;
-
-  # TOML formatting
-  programs.taplo.enable = true;
-  settings.formatter.taplo.options = [
-    "-o"
-    "align_entries=true"
-    "-o"
-    "reorder_keys=true"
-    "-o"
-    "reorder_arrays=true"
-  ];
-
-  # Python formatting with Ruff
-  programs.ruff-format.enable = true;
-}
-// extraFormatters
+in
+# Merge base config with extra formatters using recursive update to preserve all settings
+pkgs.lib.recursiveUpdate baseConfig extraFormatters

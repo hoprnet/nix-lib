@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(nix flake lock:*)",
+      "Bash(nix fmt:*)",
+      "Bash(nix flake show:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
