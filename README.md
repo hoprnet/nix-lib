@@ -9,6 +9,9 @@ cross-compilation, Docker images, and comprehensive development environments.
   x86_64/ARM64, macOS x86_64/ARM64)
 - **Static linking**: Create fully static binaries with musl on Linux
 - **Docker images**: Build optimized, layered container images
+- **Security scanning**: Trivy vulnerability scanning for container images
+- **SBOM generation**: Generate Software Bill of Materials in SPDX and CycloneDX formats
+- **Multi-architecture support**: Create OCI manifest lists for automatic platform selection
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration for multiple languages
 - **Utility apps**: Docker upload scripts, security audits, and more
@@ -175,6 +178,86 @@ image = lib.mkDockerImage {
 };
 ```
 
+### Docker Security
+
+#### `mkTrivyScan`
+
+Scan a Docker image for vulnerabilities using Trivy.
+
+```nix
+trivyScan = lib.mkTrivyScan {
+  image = myDockerImage;
+  name = "my-app-trivy-scan";
+  severity = "HIGH,CRITICAL";        # Optional: comma-separated severity levels
+  format = "json";                   # Optional: json, table, sarif, cyclonedx, spdx
+  vulnType = "os,library";           # Optional: vulnerability types to scan
+  exitCode = 1;                      # Optional: fail build on vulnerabilities
+  ignoreUnfixed = false;             # Optional: ignore unfixed vulnerabilities
+};
+
+# Build the scan report
+# nix build .#trivyScan
+# Results in: result/scan-report.json and result/scan-summary.txt
+```
+
+#### `mkSBOM`
+
+Generate Software Bill of Materials for a Docker image.
+
+```nix
+sbom = lib.mkSBOM {
+  image = myDockerImage;
+  name = "my-app-sbom";
+  formats = [ "spdx-json" "cyclonedx-json" ]; # Optional: default is both
+};
+
+# Build the SBOM
+# nix build .#sbom
+# Results in: result/sbom.spdx.json and result/sbom.cyclonedx.json
+```
+
+### Multi-Architecture Support
+
+#### `mkMultiArchManifest`
+
+Create OCI manifest list combining multiple platform-specific images.
+
+```nix
+# First, build images for different architectures
+imageAmd64 = lib.mkDockerImage {
+  name = "my-app";
+  tag = "latest";
+  Entrypoint = [ "${myPackageAmd64}/bin/my-app" ];
+  pkgsLinux = nixpkgs.legacyPackages.x86_64-linux;
+};
+
+imageArm64 = lib.mkDockerImage {
+  name = "my-app";
+  tag = "latest";
+  Entrypoint = [ "${myPackageArm64}/bin/my-app" ];
+  pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
+};
+
+# Create multi-arch manifest
+manifest = lib.mkMultiArchManifest {
+  name = "my-app";
+  tag = "latest";
+  images = [
+    { image = imageAmd64; platform = "linux/amd64"; }
+    { image = imageArm64; platform = "linux/arm64"; }
+  ];
+};
+
+# Build the manifest
+# nix build .#manifest
+# Results in:
+#   result/images/linux-amd64.tar.gz
+#   result/images/linux-arm64.tar.gz
+#   result/manifest.json
+#   result/metadata.json
+#   result/push-manifest.sh
+```
+
 ### Development Shells
 
 #### `mkDevShell`
@@ -222,6 +305,22 @@ apps.upload-image = lib.mkDockerUploadApp myDockerImage;
 # GOOGLE_ACCESS_TOKEN=... IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-image
 ```
 
+#### `mkMultiArchUploadApp`
+
+Create an app for uploading multi-architecture manifests with all platform images.
+
+```nix
+apps.upload-manifest = lib.mkMultiArchUploadApp myMultiArchManifest;
+
+# Usage:
+# GOOGLE_ACCESS_TOKEN=... IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-manifest
+#
+# This will:
+# 1. Upload each platform-specific image (e.g., image:tag-linux-amd64, image:tag-linux-arm64)
+# 2. Create and push a manifest list at IMAGE_TARGET that references all platforms
+# 3. Enable automatic platform selection when users pull the image
+```
+
 #### `mkCheckApp`
 
 Create an app for running Nix checks.
@@ -251,6 +350,8 @@ See the [examples/rust-app](examples/rust-app) directory for a complete example
 demonstrating all features of this library.
 
 Quick example:
+
+### Basic Example
 
 ```nix
 {
@@ -298,6 +399,142 @@ Quick example:
       apps.upload = lib.mkDockerUploadApp myImage;
     };
 }
+```
+
+### Complete Example with Security & Multi-Arch
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/release-25.05";
+    nix-lib.url = "github:hoprnet/nix-lib";
+  };
+
+  outputs = { self, nixpkgs, nix-lib, ... }:
+    let
+      # Support multiple systems
+      forAllSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
+    in
+    forAllSystems (system:
+      let
+        lib = nix-lib.lib.${system};
+
+        # Create builders for cross-compilation
+        builders = lib.mkRustBuilders {
+          rustToolchainFile = ./rust-toolchain.toml;
+        };
+
+        # Source filtering
+        sources = {
+          main = lib.mkSrc { root = ./.; fs = nixpkgs.lib.fileset; };
+          deps = lib.mkDepsSrc { root = ./.; fs = nixpkgs.lib.fileset; };
+        };
+
+        # Build for x86_64 Linux
+        appAmd64 = builders.x86_64-linux.callPackage lib.mkRustPackage {
+          src = sources.main;
+          depsSrc = sources.deps;
+          cargoToml = ./Cargo.toml;
+          rev = "v1.0.0";
+        };
+
+        # Build for ARM64 Linux
+        appArm64 = builders.aarch64-linux.callPackage lib.mkRustPackage {
+          src = sources.main;
+          depsSrc = sources.deps;
+          cargoToml = ./Cargo.toml;
+          rev = "v1.0.0";
+        };
+
+        # Docker images for each architecture
+        imageAmd64 = lib.mkDockerImage {
+          name = "my-app";
+          tag = "latest";
+          Entrypoint = [ "${appAmd64}/bin/my-app" ];
+          pkgsLinux = nixpkgs.legacyPackages.x86_64-linux;
+        };
+
+        imageArm64 = lib.mkDockerImage {
+          name = "my-app";
+          tag = "latest";
+          Entrypoint = [ "${appArm64}/bin/my-app" ];
+          pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
+        };
+
+        # Multi-architecture manifest
+        multiArchManifest = lib.mkMultiArchManifest {
+          name = "my-app";
+          tag = "latest";
+          images = [
+            { image = imageAmd64; platform = "linux/amd64"; }
+            { image = imageArm64; platform = "linux/arm64"; }
+          ];
+        };
+
+        # Security scanning
+        trivyScan = lib.mkTrivyScan {
+          image = imageAmd64;
+          severity = "HIGH,CRITICAL";
+          exitCode = 1; # Fail on vulnerabilities
+        };
+
+        # SBOM generation
+        sbom = lib.mkSBOM {
+          image = imageAmd64;
+          formats = [ "spdx-json" "cyclonedx-json" ];
+        };
+
+      in
+      {
+        packages = {
+          default = appAmd64;
+          amd64 = appAmd64;
+          arm64 = appArm64;
+          docker-amd64 = imageAmd64;
+          docker-arm64 = imageArm64;
+          docker-manifest = multiArchManifest;
+          trivy-scan = trivyScan;
+          sbom = sbom;
+        };
+
+        apps = {
+          # Upload single architecture image
+          upload-amd64 = lib.mkDockerUploadApp imageAmd64;
+
+          # Upload multi-arch manifest (recommended)
+          upload-manifest = lib.mkMultiArchUploadApp multiArchManifest;
+
+          # Security audit
+          audit = lib.mkAuditApp;
+        };
+
+        devShells.default = lib.mkDevShell {
+          shellName = "My App Development";
+          rustToolchainFile = ./rust-toolchain.toml;
+        };
+      }
+    );
+}
+```
+
+### CI/CD Integration Example
+
+```bash
+# Build everything
+nix build .#docker-manifest
+nix build .#trivy-scan
+nix build .#sbom
+
+# Check for vulnerabilities (fails if HIGH or CRITICAL found)
+nix build .#trivy-scan
+
+# Upload SBOM to GitHub artifacts
+gh release upload v1.0.0 result/sbom.spdx.json result/sbom.cyclonedx.json
+
+# Upload multi-arch image to registry
+GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+IMAGE_TARGET="gcr.io/my-project/my-app:v1.0.0" \
+nix run .#upload-manifest
 ```
 
 ## Platform Support

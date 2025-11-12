@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# push-manifest.sh - Push multi-architecture manifest to container registry
+#
+# This script is generated as part of a multi-arch manifest build and is
+# designed to be run from the manifest output directory.
+#
+# Usage: ./push-manifest.sh REGISTRY/IMAGE:TAG
+# Example: ./push-manifest.sh gcr.io/myproject/myapp:latest
+#
+# This script will:
+# 1. Load and push each platform-specific image
+# 2. Create and push a manifest list that references all platforms
+
+set -euo pipefail
+
+# Tool paths (injected by Nix)
+SKOPEO="@skopeo@"
+CRANE="@crane@"
+
+# Platform configuration (injected by Nix)
+PLATFORMS="@platforms@"
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 REGISTRY/IMAGE:TAG"
+  echo "Example: $0 gcr.io/myproject/myapp:latest"
+  exit 1
+fi
+
+TARGET="$1"
+MANIFEST_DIR="$(dirname "$0")"
+
+echo "Pushing multi-arch manifest to: $TARGET"
+echo "======================================="
+
+# Array to store pushed image refs
+PLATFORM_REFS=()
+
+# Push each platform image
+for platform in $PLATFORMS; do
+  echo ""
+  echo "Pushing $platform image..."
+  SAFE_PLATFORM="${platform//\//-}"
+  PLATFORM_TAG="$TARGET-$SAFE_PLATFORM"
+
+  "$SKOPEO" copy \
+    --format=oci \
+    --dest-compress \
+    "docker-archive:$MANIFEST_DIR/images/$SAFE_PLATFORM.tar.gz" \
+    "docker://$PLATFORM_TAG"
+
+  PLATFORM_REFS+=("$PLATFORM_TAG")
+  echo "$platform pushed to: $PLATFORM_TAG"
+done
+
+# Create and push manifest list using crane
+echo ""
+echo "Creating manifest list..."
+"$CRANE" index append \
+  --tag "$TARGET" \
+  "${PLATFORM_REFS[@]}"
+
+echo ""
+echo "Multi-arch manifest successfully pushed to: $TARGET"
+echo ""
+echo "You can now pull the image on any platform:"
+echo "  docker pull $TARGET"

@@ -136,6 +136,26 @@ rec {
         ;
     };
 
+  # Docker Security Utilities
+  # ------------------------
+  # Functions for scanning images and generating SBOMs
+
+  # Import docker security utilities
+  dockerSecurity = import ./docker-security.nix { inherit pkgs; };
+
+  # Re-export security utilities at top level for convenience
+  inherit (dockerSecurity) mkTrivyScan mkSBOM;
+
+  # Multi-Architecture Support
+  # -------------------------
+  # Functions for creating multi-arch Docker manifests
+
+  # Import multi-arch utilities
+  multiArch = import ./multi-arch.nix { inherit pkgs; };
+
+  # Re-export multi-arch utilities at top level for convenience
+  inherit (multiArch) mkMultiArchManifest;
+
   # Development Shells
   # -----------------
   # Functions for creating development environments
@@ -235,6 +255,8 @@ rec {
   inherit (apps)
     mkDockerUploadScript
     mkDockerUploadApp
+    mkMultiArchUploadScript
+    mkMultiArchUploadApp
     mkCheckApp
     mkAuditApp
     mkFindPortApp
