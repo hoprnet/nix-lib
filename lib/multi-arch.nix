@@ -45,82 +45,23 @@
     }:
     pkgs.runCommand "${name}-manifest-${tag}"
       {
-        buildInputs = [
-          pkgs.crane
-          pkgs.jq
-        ];
+        buildInputs = [ pkgs.jq ];
       }
       ''
-        mkdir -p $out/images
-        cd $out
-
-        echo "Creating multi-architecture manifest for ${name}:${tag}"
-        echo "==========================================="
-
-        # Process each platform image
-        ${pkgs.lib.concatMapStringsSep "\n" (
-          imageSpec:
-          let
-            img = imageSpec.image;
-            platform = imageSpec.platform;
-            safePlatform = builtins.replaceStrings [ "/" ] [ "-" ] platform;
-          in
-          ''
-            echo ""
-            echo "Processing ${platform} image..."
-            echo "Source: ${img}"
-
-            # Copy the image tarball to our output
-            cp ${img} $out/images/${safePlatform}.tar.gz
-
-            echo "Copied to: $out/images/${safePlatform}.tar.gz"
-          ''
-        ) images}
-
-        echo ""
-        echo "All images processed. Creating manifest list..."
-
-        # Create manifest metadata
-        cat > $out/metadata.json <<'METADATA_EOF'
+        # Create input JSON for the build script
+        cat >manifest-input.json <<'INPUT_EOF'
         {
           "name": "${name}",
           "tag": "${tag}",
-          "imageCount": ${toString (builtins.length images)},
-          "platforms": [
-            ${pkgs.lib.concatMapStringsSep ",\n    " (i: ''"${i.platform}"'') images}
-          ],
-          "images": {
-            ${pkgs.lib.concatMapStringsSep ",\n    " (
-              i:
-              let
-                safePlatform = builtins.replaceStrings [ "/" ] [ "-" ] i.platform;
-              in
-              ''"${i.platform}": "images/${safePlatform}.tar.gz"''
+          "images": [
+            ${pkgs.lib.concatMapStringsSep ",\n      " (
+              i: ''{"platform": "${i.platform}", "path": "${i.image}"}''
             ) images}
-          }
+          ]
         }
-        METADATA_EOF
+        INPUT_EOF
 
-        echo ""
-        echo "Manifest metadata:"
-        cat $out/metadata.json | ${pkgs.jq}/bin/jq .
-
-        # Copy the push-manifest helper script
-        # The script reads platforms from metadata.json and uses tools from PATH
-        cp ${./scripts/push-manifest.sh} $out/push-manifest.sh
-        chmod +x $out/push-manifest.sh
-
-        echo ""
-        echo "==========================================="
-        echo "✅ Multi-architecture manifest created!"
-        echo ""
-        echo "Output directory: $out"
-        echo "  - manifest.json: Manifest list"
-        echo "  - metadata.json: Manifest metadata"
-        echo "  - images/: Platform-specific images"
-        echo "  - push-manifest.sh: Helper script to push to registry"
-        echo ""
-        echo "To push to a registry:"
-        echo "  $out/push-manifest.sh REGISTRY/IMAGE:TAG"
+        # Call the build script to create the manifest
+        ${./scripts/build-manifest.sh} "$out" manifest-input.json ${./scripts/push-manifest.sh}
       '';
 }
