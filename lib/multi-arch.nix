@@ -39,9 +39,9 @@
       name, # Name for the manifest
       tag ? "latest", # Tag for the manifest
       images, # List of { image, platform } attribute sets
-      # Each image entry should have:
-      #   image: Docker image derivation
-      #   platform: Platform string (e.g., "linux/amd64", "linux/arm64")
+    # Each image entry should have:
+    #   image: Docker image derivation
+    #   platform: Platform string (e.g., "linux/amd64", "linux/arm64")
     }:
     pkgs.runCommand "${name}-manifest-${tag}"
       {
@@ -90,15 +90,13 @@
             ${pkgs.lib.concatMapStringsSep ",\n    " (i: ''"${i.platform}"'') images}
           ],
           "images": {
-            ${
-              pkgs.lib.concatMapStringsSep ",\n    " (
-                i:
-                let
-                  safePlatform = builtins.replaceStrings [ "/" ] [ "-" ] i.platform;
-                in
-                ''"${i.platform}": "images/${safePlatform}.tar.gz"''
-              ) images
-            }
+            ${pkgs.lib.concatMapStringsSep ",\n    " (
+              i:
+              let
+                safePlatform = builtins.replaceStrings [ "/" ] [ "-" ] i.platform;
+              in
+              ''"${i.platform}": "images/${safePlatform}.tar.gz"''
+            ) images}
           }
         }
         METADATA_EOF
@@ -107,14 +105,9 @@
         echo "Manifest metadata:"
         cat $out/metadata.json | ${pkgs.jq}/bin/jq .
 
-        # Create a helper script for pushing the manifest using external template
-        ${pkgs.substituteAll {
-          src = ./scripts/push-manifest.sh.in;
-          skopeo = "${pkgs.skopeo}/bin/skopeo";
-          crane = "${pkgs.crane}/bin/crane";
-          platforms = pkgs.lib.concatStringsSep " " (map (i: i.platform) images);
-        }} > $out/push-manifest.sh
-
+        # Copy the push-manifest helper script
+        # The script reads platforms from metadata.json and uses tools from PATH
+        cp ${./scripts/push-manifest.sh} $out/push-manifest.sh
         chmod +x $out/push-manifest.sh
 
         echo ""

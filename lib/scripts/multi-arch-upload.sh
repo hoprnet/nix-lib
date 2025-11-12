@@ -19,7 +19,7 @@ validate_env_var() {
   local var_name="$1"
   local var_value="${!var_name:-}"
 
-  if [[ -z "$var_value" ]]; then
+  if [[ -z $var_value ]]; then
     echo "ERROR: Required environment variable $var_name is not set or empty" >&2
     echo "Usage: Set $var_name before running this script" >&2
     exit 1
@@ -32,7 +32,7 @@ validate_env_var "IMAGE_TARGET"
 validate_env_var "MANIFEST_DIR"
 
 # Validate manifest directory
-if [[ ! -d "$MANIFEST_DIR" ]]; then
+if [[ ! -d $MANIFEST_DIR ]]; then
   echo "ERROR: Manifest directory does not exist: $MANIFEST_DIR" >&2
   exit 2
 fi
@@ -68,7 +68,7 @@ skopeo_base_args=(
 )
 
 # Add insecure policy flag only if explicitly requested
-if [[ "${SKOPEO_INSECURE_POLICY:-}" == "1" ]]; then
+if [[ ${SKOPEO_INSECURE_POLICY:-} == "1" ]]; then
   echo "WARNING: Using insecure policy mode (signature verification disabled)" >&2
   skopeo_base_args+=("--insecure-policy")
 fi
@@ -86,7 +86,7 @@ for platform in $PLATFORMS; do
   SAFE_PLATFORM="${platform//\//-}"
   IMAGE_FILE="$MANIFEST_DIR/images/$SAFE_PLATFORM.tar.gz"
 
-  if [[ ! -f "$IMAGE_FILE" ]]; then
+  if [[ ! -f $IMAGE_FILE ]]; then
     echo "ERROR: Platform image not found: $IMAGE_FILE" >&2
     exit 3
   fi

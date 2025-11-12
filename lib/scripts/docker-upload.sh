@@ -19,7 +19,7 @@ validate_env_var() {
   local var_name="$1"
   local var_value="${!var_name:-}"
 
-  if [[ -z "$var_value" ]]; then
+  if [[ -z $var_value ]]; then
     echo "ERROR: Required environment variable $var_name is not set or empty" >&2
     echo "Usage: Set $var_name before running this script" >&2
     exit 1
@@ -41,12 +41,12 @@ if ! OCI_ARCHIVE="$(nix build --no-link --print-out-paths "$IMAGE_DERIVATION" 2>
 fi
 
 # Validate build output
-if [[ -z "$OCI_ARCHIVE" ]]; then
+if [[ -z $OCI_ARCHIVE ]]; then
   echo "ERROR: Nix build returned empty output path" >&2
   exit 2
 fi
 
-if [[ ! -f "$OCI_ARCHIVE" ]]; then
+if [[ ! -f $OCI_ARCHIVE ]]; then
   echo "ERROR: Built image archive does not exist: $OCI_ARCHIVE" >&2
   exit 2
 fi
@@ -60,7 +60,7 @@ skopeo_args=(
 )
 
 # Add insecure policy flag only if explicitly requested
-if [[ "${SKOPEO_INSECURE_POLICY:-}" == "1" ]]; then
+if [[ ${SKOPEO_INSECURE_POLICY:-} == "1" ]]; then
   echo "WARNING: Using insecure policy mode (signature verification disabled)" >&2
   skopeo_args+=("--insecure-policy")
 fi
@@ -73,7 +73,7 @@ skopeo_args+=(
 # Upload the image to the registry using skopeo
 # Pipe through gzip for faster compression before upload
 echo "Uploading image to registry: $IMAGE_TARGET"
-if ! gzip --fast < "$OCI_ARCHIVE" | skopeo "${skopeo_args[@]}"; then
+if ! gzip --fast <"$OCI_ARCHIVE" | skopeo "${skopeo_args[@]}"; then
   echo "ERROR: Failed to upload image to registry" >&2
   exit 3
 fi
