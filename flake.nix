@@ -100,11 +100,11 @@
             };
 
             # Example packages showing how to use the library
-            packages = {
-              example-shell = lib.mkDevShell {
-                shellName = "Example Rust Development";
-              };
-            };
+            # packages = {
+            #   example-shell = lib.mkDevShell {
+            #     shellName = "Example Rust Development";
+            #   };
+            # };
 
             # Development shell for working on the library itself
             devShells.default = pkgs.mkShell {
