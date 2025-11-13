@@ -63,7 +63,6 @@ echo ""
 
 # Create output directory structure
 mkdir -p "$OUTPUT_DIR/images"
-cd "$OUTPUT_DIR"
 
 # Process each platform image
 jq -c '.images[]' "$INPUT_JSON" | while IFS= read -r img_json; do

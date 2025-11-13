@@ -66,14 +66,15 @@ if [[ ${SKOPEO_INSECURE_POLICY:-} == "1" ]]; then
 fi
 
 skopeo_args+=(
+  "--dest-compress"
   "docker-archive:$OCI_ARCHIVE"
   "docker://$IMAGE_TARGET"
 )
 
 # Upload the image to the registry using skopeo
-# Pipe through gzip for faster compression before upload
+# skopeo will compress the image during transfer (--dest-compress)
 echo "Uploading image to registry: $IMAGE_TARGET"
-if ! gzip --fast <"$OCI_ARCHIVE" | skopeo "${skopeo_args[@]}"; then
+if ! skopeo "${skopeo_args[@]}"; then
   echo "ERROR: Failed to upload image to registry" >&2
   exit 3
 fi
