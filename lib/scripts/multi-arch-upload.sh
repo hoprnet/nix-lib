@@ -119,9 +119,20 @@ echo "Creating manifest list..."
 echo "======================================="
 echo ""
 
+# Extract registry from IMAGE_TARGET (e.g., gcr.io from gcr.io/project/image:tag)
+REGISTRY=$(echo "$IMAGE_TARGET" | cut -d'/' -f1)
+
+# Authenticate with crane using the Google access token
+echo "Authenticating with registry: $REGISTRY"
+if ! echo "$GOOGLE_ACCESS_TOKEN" | crane auth login "$REGISTRY" --username=oauth2accesstoken --password-stdin; then
+  echo "ERROR: Failed to authenticate with registry" >&2
+  exit 4
+fi
+
+echo "Creating multi-architecture manifest..."
+
 # Use crane to create the manifest list
 if ! crane index append \
-  --docker-registry-token="$GOOGLE_ACCESS_TOKEN" \
   --tag "$IMAGE_TARGET" \
   "${PUSHED_REFS[@]}"; then
   echo "ERROR: Failed to create manifest list" >&2
