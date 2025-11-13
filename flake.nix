@@ -112,6 +112,7 @@
                 nixfmt-rfc-style
                 nil # Nix language server
                 deno # For markdown formatting
+                just
               ];
 
               shellHook = ''

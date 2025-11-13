@@ -19,9 +19,9 @@ pkgs.runCommand "trivy-db-download"
     # Fixed-output derivation settings
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
-    # Initial hash - will need to be updated after first build
-    # Replace with actual hash: nix-hash --type sha256 --to-sri $(nix-hash --type sha256 /nix/store/...-trivy-db-download)
-    outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    # Hash verified on 2025-11-13
+    # To update: remove this hash, rebuild, and replace with the new hash from the error message
+    outputHash = "sha256-8jVc7uS7Uz+dWbUMaVlMbP6kIiau3DPwuI0+7LlMtDc=";
 
     nativeBuildInputs = [
       pkgs.trivy

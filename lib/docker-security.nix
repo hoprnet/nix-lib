@@ -6,7 +6,10 @@
 # These utilities are designed to be used as separate build targets or
 # integrated into CI/CD pipelines.
 
-{ pkgs, lib ? pkgs.lib }:
+{
+  pkgs,
+  lib ? pkgs.lib,
+}:
 
 let
   # Import pre-fetched Trivy database for offline scanning
