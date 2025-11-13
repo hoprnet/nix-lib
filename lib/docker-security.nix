@@ -6,7 +6,12 @@
 # These utilities are designed to be used as separate build targets or
 # integrated into CI/CD pipelines.
 
-{ pkgs }:
+{ pkgs, lib ? pkgs.lib }:
+
+let
+  # Import pre-fetched Trivy database for offline scanning
+  trivyDb = import ./trivy-db.nix { inherit pkgs lib; };
+in
 
 {
   # mkTrivyScan - Scan a Docker image for vulnerabilities using Trivy
@@ -33,16 +38,26 @@
       exitCode ? 0, # Exit code when vulnerabilities are found (0 = don't fail)
       timeout ? "5m", # Scan timeout
       ignoreUnfixed ? false, # Ignore vulnerabilities without fixes
+      trivyDatabase ? trivyDb, # Pre-fetched Trivy database for offline scanning
     }:
     pkgs.runCommand name
       {
-        buildInputs = [ pkgs.trivy ];
+        buildInputs = [
+          pkgs.trivy
+          trivyDatabase
+        ];
         inherit image;
+
+        # Environment variables for offline scanning
+        TRIVY_CACHE_DIR = "${trivyDatabase}";
+        TRIVY_SKIP_DB_UPDATE = "true";
+        TRIVY_SKIP_JAVA_DB_UPDATE = "true";
       }
       ''
         mkdir -p $out
 
         echo "Loading Docker image: ${image}"
+        echo "Using pre-fetched Trivy database from: ${trivyDatabase}"
         ${pkgs.trivy}/bin/trivy image \
           --input ${image} \
           --format ${format} \
@@ -50,6 +65,8 @@
           --vuln-type ${vulnType} \
           --exit-code ${toString exitCode} \
           --timeout ${timeout} \
+          --skip-db-update \
+          --skip-java-db-update \
           ${pkgs.lib.optionalString ignoreUnfixed "--ignore-unfixed"} \
           --output $out/scan-report.${format} \
           ${image.imageName}:${image.imageTag or "latest"}
@@ -62,6 +79,8 @@
           --format table \
           --severity ${severity} \
           --vuln-type ${vulnType} \
+          --skip-db-update \
+          --skip-java-db-update \
           ${pkgs.lib.optionalString ignoreUnfixed "--ignore-unfixed"} \
           --output $out/scan-summary.txt \
           ${image.imageName}:${image.imageTag or "latest"} || true
