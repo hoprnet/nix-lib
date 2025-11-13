@@ -20,6 +20,10 @@
 
 set -euo pipefail
 
+# Nix-provided environment variables (set by the derivation runtime)
+# shellcheck disable=SC2154
+: "${out:?}" "${TMPDIR:?}"
+
 # Create temporary cache directory
 export TRIVY_CACHE_DIR=$TMPDIR/trivy-cache
 mkdir -p "$TRIVY_CACHE_DIR"
