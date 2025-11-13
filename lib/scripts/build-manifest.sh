@@ -57,6 +57,13 @@ NAME=$(jq -r '.name' "$INPUT_JSON")
 TAG=$(jq -r '.tag' "$INPUT_JSON")
 IMAGE_COUNT=$(jq '.images | length' "$INPUT_JSON")
 
+# Validate that at least one image is provided
+if ! [[ "$IMAGE_COUNT" =~ ^[0-9]+$ ]] || [ "$IMAGE_COUNT" -eq 0 ]; then
+  echo "ERROR: No images found in input JSON" >&2
+  echo "The 'images' array must contain at least one image" >&2
+  exit 1
+fi
+
 echo "Creating multi-architecture manifest for $NAME:$TAG"
 echo "==========================================="
 echo ""

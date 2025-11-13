@@ -46,17 +46,47 @@ pkgs.runCommand "trivy-db-download"
 
     echo "Downloading Trivy vulnerability database..."
     echo "This may take a few minutes depending on network speed..."
+    echo ""
 
     # Download the database only (no scanning)
-    trivy --cache-dir $TRIVY_CACHE_DIR image --download-db-only
+    if ! trivy --cache-dir $TRIVY_CACHE_DIR image --download-db-only; then
+      echo "ERROR: Failed to download Trivy database" >&2
+      exit 1
+    fi
 
     echo ""
-    echo "Database downloaded successfully!"
+    echo "Validating database download..."
+
+    # Validate download was successful
+    if [ ! -d "$TRIVY_CACHE_DIR/db" ]; then
+      echo "ERROR: Database directory not created: $TRIVY_CACHE_DIR/db" >&2
+      exit 1
+    fi
+
+    if [ ! -f "$TRIVY_CACHE_DIR/db/trivy.db" ]; then
+      echo "ERROR: Database file not found: $TRIVY_CACHE_DIR/db/trivy.db" >&2
+      exit 1
+    fi
+
+    if [ ! -s "$TRIVY_CACHE_DIR/db/trivy.db" ]; then
+      echo "ERROR: Database file is empty: $TRIVY_CACHE_DIR/db/trivy.db" >&2
+      exit 1
+    fi
+
+    if [ ! -f "$TRIVY_CACHE_DIR/db/metadata.json" ]; then
+      echo "ERROR: Database metadata not found: $TRIVY_CACHE_DIR/db/metadata.json" >&2
+      exit 1
+    fi
+
+    echo "Database downloaded and validated successfully!"
     echo ""
 
     # Package the database into the output
+    echo "Packaging database files..."
     mkdir -p $out/db
     cp -r $TRIVY_CACHE_DIR/db/* $out/db/
+    echo "Files copied to output directory"
+    echo ""
 
     # Display database information
     echo "Database files packaged:"

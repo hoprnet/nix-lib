@@ -15,7 +15,8 @@ update-trivy-db-hash:
 
     # Set a fake hash to force rebuild
     FAKE_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    sed -i "s|outputHash = \"sha256-[^\"]*\";|outputHash = \"$FAKE_HASH\";|g" lib/trivy-db.nix
+    sed "s|outputHash = \"sha256-[^\"]*\";|outputHash = \"$FAKE_HASH\";|g" lib/trivy-db.nix > lib/trivy-db.nix.tmp
+    mv lib/trivy-db.nix.tmp lib/trivy-db.nix
 
     echo "Building trivy-db to get new hash..."
     # Build and capture the error containing the correct hash
@@ -36,11 +37,13 @@ update-trivy-db-hash:
     echo "New hash: $NEW_HASH"
 
     # Update the hash in the file
-    sed -i "s|outputHash = \"$FAKE_HASH\";|outputHash = \"$NEW_HASH\";|g" lib/trivy-db.nix
+    sed "s|outputHash = \"$FAKE_HASH\";|outputHash = \"$NEW_HASH\";|g" lib/trivy-db.nix > lib/trivy-db.nix.tmp
+    mv lib/trivy-db.nix.tmp lib/trivy-db.nix
 
     # Update the date comment
     CURRENT_DATE=$(date +%Y-%m-%d)
-    sed -i "s|# Hash verified on .*|# Hash verified on $CURRENT_DATE|g" lib/trivy-db.nix
+    sed "s|# Hash verified on .*|# Hash verified on $CURRENT_DATE|g" lib/trivy-db.nix > lib/trivy-db.nix.tmp
+    mv lib/trivy-db.nix.tmp lib/trivy-db.nix
 
     # Remove backup
     rm lib/trivy-db.nix.bak
