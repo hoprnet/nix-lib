@@ -10,8 +10,10 @@ cross-compilation, Docker images, and comprehensive development environments.
 - **Static linking**: Create fully static binaries with musl on Linux
 - **Docker images**: Build optimized, layered container images
 - **Security scanning**: Trivy vulnerability scanning for container images
-- **SBOM generation**: Generate Software Bill of Materials in SPDX and CycloneDX formats
-- **Multi-architecture support**: Create OCI manifest lists for automatic platform selection
+- **SBOM generation**: Generate Software Bill of Materials in SPDX and CycloneDX
+  formats
+- **Multi-architecture support**: Create OCI manifest lists for automatic
+  platform selection
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration for multiple languages
 - **Utility apps**: Docker upload scripts, security audits, and more
@@ -307,7 +309,8 @@ apps.upload-image = lib.mkDockerUploadApp myDockerImage;
 
 #### `mkMultiArchUploadApp`
 
-Create an app for uploading multi-architecture manifests with all platform images.
+Create an app for uploading multi-architecture manifests with all platform
+images.
 
 ```nix
 apps.upload-manifest = lib.mkMultiArchUploadApp myMultiArchManifest;
