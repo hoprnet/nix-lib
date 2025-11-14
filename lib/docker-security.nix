@@ -126,9 +126,25 @@ in
         inherit image;
       }
       ''
+        set -euo pipefail
+
         mkdir -p $out
 
+        # Validate that at least one format is requested
+        if [ ${builtins.toString (builtins.length formats)} -eq 0 ]; then
+          echo "ERROR: No SBOM formats specified. Available formats: spdx-json, cyclonedx-json, syft-json"
+          exit 1
+        fi
+
+        # Verify image exists
+        if [ ! -f "${image}" ]; then
+          echo "ERROR: Docker image not found: ${image}"
+          ls -la "$(dirname "${image}")" || true
+          exit 1
+        fi
+
         echo "Loading Docker image for SBOM generation: ${image}"
+        echo "Requested formats: ${builtins.toString formats}"
 
         # Generate SPDX SBOM
         ${
@@ -138,7 +154,12 @@ in
               ${pkgs.syft}/bin/syft scan \
                 oci-archive:${image} \
                 --output spdx-json=$out/sbom.spdx.json
-              echo "SPDX SBOM generated: $out/sbom.spdx.json"
+
+              if [ ! -f "$out/sbom.spdx.json" ]; then
+                echo "ERROR: Failed to generate SPDX SBOM at $out/sbom.spdx.json"
+                exit 1
+              fi
+              echo "SPDX SBOM generated: $out/sbom.spdx.json ($(stat -c%s "$out/sbom.spdx.json" 2>/dev/null || stat -f%z "$out/sbom.spdx.json" 2>/dev/null) bytes)"
             ''
           else
             ""
@@ -152,7 +173,12 @@ in
               ${pkgs.syft}/bin/syft scan \
                 oci-archive:${image} \
                 --output cyclonedx-json=$out/sbom.cyclonedx.json
-              echo "CycloneDX SBOM generated: $out/sbom.cyclonedx.json"
+
+              if [ ! -f "$out/sbom.cyclonedx.json" ]; then
+                echo "ERROR: Failed to generate CycloneDX SBOM at $out/sbom.cyclonedx.json"
+                exit 1
+              fi
+              echo "CycloneDX SBOM generated: $out/sbom.cyclonedx.json ($(stat -c%s "$out/sbom.cyclonedx.json" 2>/dev/null || stat -f%z "$out/sbom.cyclonedx.json" 2>/dev/null) bytes)"
             ''
           else
             ""
@@ -166,7 +192,12 @@ in
               ${pkgs.syft}/bin/syft scan \
                 oci-archive:${image} \
                 --output syft-json=$out/sbom.syft.json
-              echo "Syft JSON SBOM generated: $out/sbom.syft.json"
+
+              if [ ! -f "$out/sbom.syft.json" ]; then
+                echo "ERROR: Failed to generate Syft SBOM at $out/sbom.syft.json"
+                exit 1
+              fi
+              echo "Syft JSON SBOM generated: $out/sbom.syft.json ($(stat -c%s "$out/sbom.syft.json" 2>/dev/null || stat -f%z "$out/sbom.syft.json" 2>/dev/null) bytes)"
             ''
           else
             ""
