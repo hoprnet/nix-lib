@@ -146,6 +146,12 @@ in
         echo "Loading Docker image for SBOM generation: ${image}"
         echo "Requested formats: ${builtins.toString formats}"
 
+        # Create writable cache directory for Syft
+        # Syft needs write access to cache vulnerability databases and scan metadata
+        echo "Setting up writable Syft cache..."
+        export SYFT_CACHE_DIR=$TMPDIR/syft-cache
+        mkdir -p $SYFT_CACHE_DIR
+
         # Generate SPDX SBOM
         ${
           if builtins.elem "spdx-json" formats then
