@@ -164,9 +164,14 @@ in
           if builtins.elem "spdx-json" formats then
             ''
               echo "Generating SPDX JSON SBOM..."
-              ${pkgs.syft}/bin/syft scan \
-                oci-archive:$TMPDIR/image.tar \
-                --output spdx-json=$out/sbom.spdx.json 2>&1
+              if ! ${pkgs.syft}/bin/syft scan -vv \
+                docker-archive:$TMPDIR/image.tar \
+                --output spdx-json=$out/sbom.spdx.json 2>&1; then
+                  exitcode=$?
+                  echo "ERROR: Syft scan failed with exit code: $exitcode"
+                  echo "Archive: $TMPDIR/image.tar ($(stat -c%s "$TMPDIR/image.tar" 2>/dev/null || stat -f%z "$TMPDIR/image.tar" 2>/dev/null) bytes)"
+                  exit $exitcode
+              fi
 
               if [ ! -f "$out/sbom.spdx.json" ]; then
                 echo "ERROR: Failed to generate SPDX SBOM at $out/sbom.spdx.json"
@@ -183,9 +188,14 @@ in
           if builtins.elem "cyclonedx-json" formats then
             ''
               echo "Generating CycloneDX JSON SBOM..."
-              ${pkgs.syft}/bin/syft scan \
-                oci-archive:$TMPDIR/image.tar \
-                --output cyclonedx-json=$out/sbom.cyclonedx.json 2>&1
+              if ! ${pkgs.syft}/bin/syft scan -vv \
+                docker-archive:$TMPDIR/image.tar \
+                --output cyclonedx-json=$out/sbom.cyclonedx.json 2>&1; then
+                  exitcode=$?
+                  echo "ERROR: Syft scan failed with exit code: $exitcode"
+                  echo "Archive: $TMPDIR/image.tar ($(stat -c%s "$TMPDIR/image.tar" 2>/dev/null || stat -f%z "$TMPDIR/image.tar" 2>/dev/null) bytes)"
+                  exit $exitcode
+              fi
 
               if [ ! -f "$out/sbom.cyclonedx.json" ]; then
                 echo "ERROR: Failed to generate CycloneDX SBOM at $out/sbom.cyclonedx.json"
@@ -202,9 +212,14 @@ in
           if builtins.elem "syft-json" formats then
             ''
               echo "Generating Syft native JSON SBOM..."
-              ${pkgs.syft}/bin/syft scan \
-                oci-archive:$TMPDIR/image.tar \
-                --output syft-json=$out/sbom.syft.json 2>&1
+              if ! ${pkgs.syft}/bin/syft scan -vv \
+                docker-archive:$TMPDIR/image.tar \
+                --output syft-json=$out/sbom.syft.json 2>&1; then
+                  exitcode=$?
+                  echo "ERROR: Syft scan failed with exit code: $exitcode"
+                  echo "Archive: $TMPDIR/image.tar ($(stat -c%s "$TMPDIR/image.tar" 2>/dev/null || stat -f%z "$TMPDIR/image.tar" 2>/dev/null) bytes)"
+                  exit $exitcode
+              fi
 
               if [ ! -f "$out/sbom.syft.json" ]; then
                 echo "ERROR: Failed to generate Syft SBOM at $out/sbom.syft.json"
