@@ -52,15 +52,22 @@ in
         inherit image;
 
         # Environment variables for offline scanning
-        TRIVY_CACHE_DIR = "${trivyDatabase}";
         TRIVY_SKIP_DB_UPDATE = "true";
         TRIVY_SKIP_JAVA_DB_UPDATE = "true";
       }
       ''
         mkdir -p $out
 
-        echo "Loading Docker image: ${image}"
+        # Create a writable cache directory and copy the pre-fetched database
+        # Trivy/SQLite needs write access to open the database file
+        echo "Setting up writable Trivy cache..."
+        export TRIVY_CACHE_DIR=$TMPDIR/trivy-cache
+        mkdir -p $TRIVY_CACHE_DIR/db
+        cp -r ${trivyDatabase}/db/* $TRIVY_CACHE_DIR/db/
+        chmod -R u+w $TRIVY_CACHE_DIR
         echo "Using pre-fetched Trivy database from: ${trivyDatabase}"
+
+        echo "Loading Docker image: ${image}"
         ${pkgs.trivy}/bin/trivy image \
           --input ${image} \
           --format ${format} \
