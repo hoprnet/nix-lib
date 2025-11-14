@@ -152,14 +152,21 @@ in
         export SYFT_CACHE_DIR=$TMPDIR/syft-cache
         mkdir -p $SYFT_CACHE_DIR
 
+        # Decompress the Docker image for Syft
+        # Nix's dockerTools.buildImage outputs gzipped tar archives (.tar.gz)
+        # but Syft's oci-archive source expects uncompressed tar archives (.tar)
+        echo "Decompressing Docker image..."
+        gunzip -c ${image} > $TMPDIR/image.tar
+        echo "Decompressed image size: $(stat -c%s "$TMPDIR/image.tar" 2>/dev/null || stat -f%z "$TMPDIR/image.tar" 2>/dev/null) bytes"
+
         # Generate SPDX SBOM
         ${
           if builtins.elem "spdx-json" formats then
             ''
               echo "Generating SPDX JSON SBOM..."
               ${pkgs.syft}/bin/syft scan \
-                oci-archive:${image} \
-                --output spdx-json=$out/sbom.spdx.json
+                oci-archive:$TMPDIR/image.tar \
+                --output spdx-json=$out/sbom.spdx.json 2>&1
 
               if [ ! -f "$out/sbom.spdx.json" ]; then
                 echo "ERROR: Failed to generate SPDX SBOM at $out/sbom.spdx.json"
@@ -177,8 +184,8 @@ in
             ''
               echo "Generating CycloneDX JSON SBOM..."
               ${pkgs.syft}/bin/syft scan \
-                oci-archive:${image} \
-                --output cyclonedx-json=$out/sbom.cyclonedx.json
+                oci-archive:$TMPDIR/image.tar \
+                --output cyclonedx-json=$out/sbom.cyclonedx.json 2>&1
 
               if [ ! -f "$out/sbom.cyclonedx.json" ]; then
                 echo "ERROR: Failed to generate CycloneDX SBOM at $out/sbom.cyclonedx.json"
@@ -196,8 +203,8 @@ in
             ''
               echo "Generating Syft native JSON SBOM..."
               ${pkgs.syft}/bin/syft scan \
-                oci-archive:${image} \
-                --output syft-json=$out/sbom.syft.json
+                oci-archive:$TMPDIR/image.tar \
+                --output syft-json=$out/sbom.syft.json 2>&1
 
               if [ ! -f "$out/sbom.syft.json" ]; then
                 echo "ERROR: Failed to generate Syft SBOM at $out/sbom.syft.json"
