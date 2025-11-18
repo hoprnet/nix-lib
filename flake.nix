@@ -32,6 +32,7 @@
 
     # Input dependency optimization
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -111,6 +112,7 @@
                 nixfmt-rfc-style
                 nil # Nix language server
                 deno # For markdown formatting
+                just
               ];
 
               shellHook = ''
@@ -137,6 +139,46 @@
                 deno = {
                   enable = true;
                   includes = [ "*.md" ];
+                };
+                shfmt = {
+                  enable = true;
+                  indent_size = 2;
+                };
+                shellcheck = {
+                  enable = true;
+                };
+              };
+              settings = {
+                global.excludes = [
+                  # Nix build outputs
+                  "result"
+                  "result-*"
+                  # Git
+                  ".git/**"
+                  # Direnv
+                  ".direnv/**"
+                  # Template files (contain Nix substitution variables)
+                  "lib/setup-hook-darwin.sh"
+                ];
+                formatter = {
+                  shfmt = {
+                    options = [
+                      "-i"
+                      "2" # 2 space indentation
+                      "-s" # Simplify code
+                      "-w" # Write result to file
+                    ];
+                    includes = [
+                      "*.sh"
+                      "lib/scripts/*.sh"
+                    ];
+                  };
+                  shellcheck = {
+                    includes = [
+                      "*.sh"
+                      "lib/scripts/*.sh"
+                    ];
+                  };
                 };
               };
             };

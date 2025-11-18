@@ -30,7 +30,12 @@
 
   # Configure perSystem options and config
   perSystem =
-    { config, system, pkgs, ... }:
+    {
+      config,
+      system,
+      pkgs,
+      ...
+    }:
     let
       # Get the nix-lib library functions for this system
       nixLib = inputs.self.lib.${system};
