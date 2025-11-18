@@ -63,9 +63,17 @@ in
         echo "Setting up writable Trivy cache..."
         export TRIVY_CACHE_DIR=$TMPDIR/trivy-cache
         mkdir -p $TRIVY_CACHE_DIR/db
-        cp -r ${trivyDatabase}/db/* $TRIVY_CACHE_DIR/db/
+
+        # Only copy if database files exist
+        if [ -n "$(find ${trivyDatabase}/db -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+          cp -r ${trivyDatabase}/db/* $TRIVY_CACHE_DIR/db/
+          echo "Using pre-fetched Trivy database from: ${trivyDatabase}"
+        else
+          echo "ERROR: Trivy database is empty at ${trivyDatabase}/db" >&2
+          exit 1
+        fi
+
         chmod -R u+w $TRIVY_CACHE_DIR
-        echo "Using pre-fetched Trivy database from: ${trivyDatabase}"
 
         echo "Loading Docker image: ${image}"
         ${pkgs.trivy}/bin/trivy image \
