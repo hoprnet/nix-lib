@@ -62,6 +62,6 @@
         INPUT_EOF
 
         # Call the build script to create the manifest
-        ${./scripts/build-manifest.sh} "$out" manifest-input.json ${./scripts/push-manifest.sh}
+        bash ${./scripts/build-manifest.sh} "$out" manifest-input.json ${./scripts/push-manifest.sh}
       '';
 }

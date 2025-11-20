@@ -44,5 +44,5 @@ pkgs.runCommand "trivy-db-download"
   }
   ''
     # Execute the download script
-    ${./scripts/download-trivy-db.sh}
+    bash ${./scripts/download-trivy-db.sh}
   ''
