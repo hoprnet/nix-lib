@@ -22,9 +22,9 @@ pkgs.runCommand "trivy-db-download"
     # Fixed-output derivation settings
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
-    # Hash verified on 2025-11-13
+    # Hash verified on 2025-11-20
     # To update: remove this hash, rebuild, and replace with the new hash from the error message
-    outputHash = "sha256-8jVc7uS7Uz+dWbUMaVlMbP6kIiau3DPwuI0+7LlMtDc=";
+    outputHash = "sha256-NY9sq/epCONXx1qvrteCOVwic5RL8KZRwGzqi5I1l3E=";
 
     nativeBuildInputs = [
       pkgs.trivy
