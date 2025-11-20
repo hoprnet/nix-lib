@@ -69,6 +69,14 @@ echo ""
 echo "Packaging database files..."
 mkdir -p "$out/db"
 cp -r "$TRIVY_CACHE_DIR"/db/* "$out/db/"
+
+# Remove DownloadedAt timestamp for reproducible builds
+# This field changes on every download, causing different hashes for the same database
+if [ -f "$out/db/metadata.json" ]; then
+  jq 'del(.DownloadedAt)' "$out/db/metadata.json" > "$out/db/metadata.json.tmp"
+  mv "$out/db/metadata.json.tmp" "$out/db/metadata.json"
+fi
+
 echo "Files copied to output directory"
 echo ""
 

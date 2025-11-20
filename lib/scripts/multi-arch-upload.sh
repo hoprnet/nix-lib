@@ -8,9 +8,6 @@
 #   GOOGLE_ACCESS_TOKEN - Access token for registry authentication
 #   IMAGE_TARGET        - Full registry path (e.g., gcr.io/project/image:tag)
 #   MANIFEST_DIR        - Path to the manifest directory containing images and metadata
-#
-# Optional environment variables:
-#   SKOPEO_INSECURE_POLICY - Set to "1" to bypass signature verification
 
 set -euo pipefail
 
@@ -65,13 +62,8 @@ echo ""
 # Prepare skopeo base args
 skopeo_base_args=(
   "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
+  "--policy=$POLICY_JSON"
 )
-
-# Add insecure policy flag only if explicitly requested
-if [[ ${SKOPEO_INSECURE_POLICY:-} == "1" ]]; then
-  echo "WARNING: Using insecure policy mode (signature verification disabled)" >&2
-  skopeo_base_args+=("--insecure-policy")
-fi
 
 # Array to store pushed image references for manifest creation
 PUSHED_REFS=()
@@ -131,10 +123,16 @@ fi
 
 echo "Creating multi-architecture manifest..."
 
+# Build the manifest arguments array
+MANIFEST_ARGS=()
+for ref in "${PUSHED_REFS[@]}"; do
+  MANIFEST_ARGS+=("-m" "$ref")
+done
+
 # Use crane to create the manifest list
 if ! crane index append \
-  --tag "$IMAGE_TARGET" \
-  "${PUSHED_REFS[@]}"; then
+  "${MANIFEST_ARGS[@]}" \
+  -t "$IMAGE_TARGET"; then
   echo "ERROR: Failed to create manifest list" >&2
   exit 4
 fi

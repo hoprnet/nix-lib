@@ -80,9 +80,16 @@ done
 # Create and push manifest list using crane
 echo ""
 echo "Creating manifest list..."
+
+# Build the manifest arguments array
+MANIFEST_ARGS=()
+for ref in "${PLATFORM_REFS[@]}"; do
+  MANIFEST_ARGS+=("-m" "$ref")
+done
+
 crane index append \
-  --tag "$TARGET" \
-  "${PLATFORM_REFS[@]}"
+  "${MANIFEST_ARGS[@]}" \
+  -t "$TARGET"
 
 echo ""
 echo "Multi-arch manifest successfully pushed to: $TARGET"
