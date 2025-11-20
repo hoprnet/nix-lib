@@ -24,11 +24,12 @@ pkgs.runCommand "trivy-db-download"
     outputHashAlgo = "sha256";
     # Hash verified on 2025-11-20
     # To update: remove this hash, rebuild, and replace with the new hash from the error message
-    outputHash = "sha256-NY9sq/epCONXx1qvrteCOVwic5RL8KZRwGzqi5I1l3E=";
+    outputHash = "sha256-/YrzbwsHYpTnf+cTKN6w7GqMx5VLYgqHADo+WyOJ2+4=";
 
     nativeBuildInputs = [
       pkgs.trivy
       pkgs.cacert
+      pkgs.jq
     ];
 
     # SSL certificate bundle for HTTPS downloads
