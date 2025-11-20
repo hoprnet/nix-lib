@@ -8,9 +8,6 @@
 #   GOOGLE_ACCESS_TOKEN - Access token for registry authentication
 #   IMAGE_TARGET        - Full registry path (e.g., gcr.io/project/image:tag)
 #   MANIFEST_DIR        - Path to the manifest directory containing images and metadata
-#
-# Optional environment variables:
-#   SKOPEO_INSECURE_POLICY - Set to "1" to bypass signature verification
 
 set -euo pipefail
 
@@ -62,16 +59,14 @@ for platform in $PLATFORMS; do
 done
 echo ""
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(dirname "$0")"
+
 # Prepare skopeo base args
 skopeo_base_args=(
   "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
+  "--policy=$SCRIPT_DIR/policy.json"
 )
-
-# Add insecure policy flag only if explicitly requested
-if [[ ${SKOPEO_INSECURE_POLICY:-} == "1" ]]; then
-  echo "WARNING: Using insecure policy mode (signature verification disabled)" >&2
-  skopeo_base_args+=("--insecure-policy")
-fi
 
 # Array to store pushed image references for manifest creation
 PUSHED_REFS=()
