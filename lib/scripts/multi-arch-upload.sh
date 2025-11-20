@@ -123,10 +123,16 @@ fi
 
 echo "Creating multi-architecture manifest..."
 
+# Build the manifest arguments array
+MANIFEST_ARGS=()
+for ref in "${PUSHED_REFS[@]}"; do
+  MANIFEST_ARGS+=("-m" "$ref")
+done
+
 # Use crane to create the manifest list
 if ! crane index append \
-  --tag "$IMAGE_TARGET" \
-  "${PUSHED_REFS[@]}"; then
+  "${MANIFEST_ARGS[@]}" \
+  -t "$IMAGE_TARGET"; then
   echo "ERROR: Failed to create manifest list" >&2
   exit 4
 fi
