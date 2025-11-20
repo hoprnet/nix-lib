@@ -58,9 +58,6 @@ rec {
   # Required environment variables:
   #   - GOOGLE_ACCESS_TOKEN: Access token for Google Cloud Registry authentication
   #   - IMAGE_TARGET: Full registry path for the target image (e.g., gcr.io/project/image:tag)
-  #
-  # Optional environment variables:
-  #   - SKOPEO_INSECURE_POLICY=1: Enable insecure policy mode (bypasses signature verification)
   mkMultiArchUploadScript =
     manifest:
     pkgs.writeShellApplication {
@@ -73,6 +70,7 @@ rec {
       text = ''
         # Set MANIFEST_DIR to the manifest path for the script
         export MANIFEST_DIR="${manifest}"
+        export POLICY_JSON="${./scripts/policy.json}"
         ${builtins.readFile ./scripts/multi-arch-upload.sh}
       '';
     };

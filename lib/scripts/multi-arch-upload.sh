@@ -59,13 +59,10 @@ for platform in $PLATFORMS; do
 done
 echo ""
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(dirname "$0")"
-
 # Prepare skopeo base args
 skopeo_base_args=(
   "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
-  "--policy=$SCRIPT_DIR/policy.json"
+  "--policy=$POLICY_JSON"
 )
 
 # Array to store pushed image references for manifest creation
