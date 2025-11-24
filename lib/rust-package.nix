@@ -33,6 +33,7 @@
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
   extraNativeBuildInputs ? [ ], # Additional native build inputs
+  __noChroot ? false, # Disable sandbox for tests needing network access
 }:
 let
   # `hostPlatform` is the cross-compilation output platform
@@ -196,7 +197,7 @@ in
 builder (
   args
   // {
-    inherit src postInstall;
+    inherit src postInstall __noChroot;
 
     preConfigure = ''
       # respect the amount of available cores for building
