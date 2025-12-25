@@ -124,14 +124,14 @@ rec {
       rustToolchainFile ? null,
     }:
     let
-      # Use provided Rust toolchain or default from rust-toolchain.toml or stable cargo
+      # Use provided Rust toolchain or default from rust-toolchain.toml or stable Rust
       selectedRust =
         if rustToolchain != null then
           rustToolchain
         else if rustToolchainFile != null then
           pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile
         else
-          pkgs.cargo;
+          pkgs.rust-bin.stable.latest.default;
     in
     flake-utils.lib.mkApp {
       drv = pkgs.writeShellApplication {
