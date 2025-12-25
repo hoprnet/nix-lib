@@ -114,18 +114,37 @@ rec {
     };
 
   # Run cargo audit for security vulnerability checking
-  mkAuditApp = flake-utils.lib.mkApp {
-    drv = pkgs.writeShellApplication {
-      name = "audit";
-      runtimeInputs = with pkgs; [
-        cargo
-        cargo-audit
-      ];
-      text = ''
-        cargo audit
-      '';
+  #
+  # Arguments:
+  #   rustToolchain: Optional Rust toolchain derivation
+  #   rustToolchainFile: Optional path to rust-toolchain.toml
+  mkAuditApp =
+    {
+      rustToolchain ? null,
+      rustToolchainFile ? null,
+    }:
+    let
+      # Use provided Rust toolchain or default from rust-toolchain.toml or stable cargo
+      selectedRust =
+        if rustToolchain != null then
+          rustToolchain
+        else if rustToolchainFile != null then
+          pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile
+        else
+          pkgs.cargo;
+    in
+    flake-utils.lib.mkApp {
+      drv = pkgs.writeShellApplication {
+        name = "audit";
+        runtimeInputs = [
+          selectedRust
+          pkgs.cargo-audit
+        ];
+        text = ''
+          cargo audit
+        '';
+      };
     };
-  };
 
   # Find an available port for CI testing
   # Used to avoid port conflicts in parallel CI runs

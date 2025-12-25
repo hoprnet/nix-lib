@@ -380,13 +380,16 @@ apps.check = lib.mkCheckApp { system = "x86_64-linux"; };
 
 #### `mkAuditApp`
 
-Create a cargo audit app for security scanning.
+Create a cargo audit app for security scanning. Supports custom toolchains.
 
 ```nix
-apps.audit = lib.mkAuditApp;
+# Basic usage
+apps.audit = lib.mkAuditApp { };
 
-# Usage:
-# nix run .#audit
+# With custom toolchain file
+apps.audit = lib.mkAuditApp {
+  rustToolchainFile = ./rust-toolchain.toml;
+};
 ```
 
 ### Documentation
@@ -567,7 +570,9 @@ Quick example:
           upload-manifest = lib.mkMultiArchUploadApp multiArchManifest;
 
           # Security audit
-          audit = lib.mkAuditApp;
+          audit = lib.mkAuditApp {
+            rustToolchainFile = ./rust-toolchain.toml;
+          };
         };
 
         devShells.default = lib.mkDevShell {
