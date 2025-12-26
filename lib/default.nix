@@ -11,6 +11,7 @@
 
 {
   nixpkgs,
+  nixpkgs-unstable,
   rust-overlay,
   crane,
   flake-utils,
@@ -19,6 +20,13 @@
 
 let
   pkgs = import nixpkgs {
+    inherit system;
+    overlays = [
+      rust-overlay.overlays.default
+    ];
+  };
+
+  pkgsUnstable = import nixpkgs-unstable {
     inherit system;
     overlays = [
       rust-overlay.overlays.default
@@ -248,7 +256,7 @@ rec {
   # Functions for creating utility scripts and apps
 
   apps = import ./apps.nix {
-    inherit pkgs flake-utils;
+    inherit pkgs pkgsUnstable flake-utils;
   };
 
   # Re-export app utilities at top level for convenience

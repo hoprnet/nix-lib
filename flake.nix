@@ -20,6 +20,7 @@
   inputs = {
     # Core Nix ecosystem dependencies
     nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
 
     # Rust toolchain and build system
@@ -39,6 +40,7 @@
     inputs@{
       self,
       nixpkgs,
+      nixpkgs-unstable,
       flake-utils,
       rust-overlay,
       crane,
@@ -54,6 +56,7 @@
         import ./lib/default.nix {
           inherit
             nixpkgs
+            nixpkgs-unstable
             rust-overlay
             crane
             flake-utils

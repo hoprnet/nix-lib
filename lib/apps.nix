@@ -3,7 +3,11 @@
 # Provides various utility scripts for development, testing, and maintenance,
 # including Docker upload utilities and common development tools.
 
-{ pkgs, flake-utils }:
+{
+  pkgs,
+  pkgsUnstable,
+  flake-utils,
+}:
 
 rec {
   # Docker Upload Utilities
@@ -118,10 +122,12 @@ rec {
   # Arguments:
   #   rustToolchain: Optional Rust toolchain derivation
   #   rustToolchainFile: Optional path to rust-toolchain.toml
+  #   cargoAudit: Optional cargo-audit package (defaults to unstable for latest DB)
   mkAuditApp =
     {
       rustToolchain ? null,
       rustToolchainFile ? null,
+      cargoAudit ? pkgsUnstable.cargo-audit,
     }:
     let
       # Use provided Rust toolchain or default from rust-toolchain.toml or stable Rust
@@ -129,16 +135,16 @@ rec {
         if rustToolchain != null then
           rustToolchain
         else if rustToolchainFile != null then
-          pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile
+          pkgsUnstable.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile
         else
-          pkgs.rust-bin.stable.latest.default;
+          pkgsUnstable.rust-bin.stable.latest.default;
     in
     flake-utils.lib.mkApp {
       drv = pkgs.writeShellApplication {
         name = "audit";
         runtimeInputs = [
           selectedRust
-          pkgs.cargo-audit
+          cargoAudit
         ];
         text = ''
           cargo audit
