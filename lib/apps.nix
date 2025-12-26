@@ -122,7 +122,7 @@ rec {
   # Arguments:
   #   rustToolchain: Optional Rust toolchain derivation
   #   rustToolchainFile: Optional path to rust-toolchain.toml
-  #   cargoAudit: Optional cargo-audit package (defaults to unstable for latest DB)
+  #   cargoAudit: Optional cargo-audit package (defaults to unstable, since the new advisory DB entries require at least version 0.22)
   mkAuditApp =
     {
       rustToolchain ? null,
