@@ -146,7 +146,7 @@
             upload-docker = lib.mkDockerUploadApp dockerImage;
 
             # Run security audit
-            audit = lib.mkAuditApp;
+            audit = lib.mkAuditApp { };
           };
 
           # Checks that run with `nix flake check`
