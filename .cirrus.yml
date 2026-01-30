@@ -1,11 +1,13 @@
-tasks:
-  - name: flake check
-    container:
-      image: nixos/nix:latest
-    check_script:
-      - nix flake check
-  - name: formatting
-    container:
-      image: nixos/nix:latest
-    check_script:
-      - nix fmt -- --check
+task:
+  name: flake check
+  container:
+    image: nixos/nix:latest
+  check_script:
+    - nix flake check
+
+task:
+  name: formatting
+  container:
+    image: nixos/nix:latest
+  check_script:
+    - nix fmt -- --check
