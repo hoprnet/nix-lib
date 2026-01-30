@@ -4,7 +4,7 @@ task:
   matrix:
     - name: Check
       check_script:
-        - nix flake check
+        - nix --extra-experimental-features nix-command flake check
     - name: Formatting
       check_script:
-       - nix fmt -- --check
+        - nix --extra-experimental-features nix-command fmt -- --check
