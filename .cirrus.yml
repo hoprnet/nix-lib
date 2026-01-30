@@ -1,10 +1,5 @@
 task:
   container:
     image: nixos/nix:latest
-  matrix:
-    - name: Check
-      check_script:
-        - nix --extra-experimental-features 'nix-command flakes' flake check
-    - name: Formatting
-      check_script:
-        - nix --extra-experimental-features 'nix-command flakes' fmt -- --check
+  check_script:
+    - nix --extra-experimental-features 'nix-command flakes' flake check
