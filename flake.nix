@@ -25,7 +25,7 @@
 
     # Rust toolchain and build system
     rust-overlay.url = "github:oxalica/rust-overlay/master";
-    crane.url = "github:ipetkov/crane/v0.21.3";
+    crane.url = "github:ipetkov/crane/v0.23.0";
 
     # Flake organization and formatting
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -100,13 +100,6 @@
               overlays = [
                 rust-overlay.overlays.default
               ];
-            };
-
-            # Example packages showing how to use the library
-            packages = {
-              example-shell = lib.mkDevShell {
-                shellName = "Example Rust Development";
-              };
             };
 
             # Development shell for working on the library itself
@@ -188,6 +181,12 @@
 
             # Formatter is provided by treefmt
             formatter = config.treefmt.build.wrapper;
+
+            # Checks that run with `nix flake check`
+            checks = {
+              # Formatting check
+              format = config.treefmt.build.check self;
+            };
           };
 
         flake = {

@@ -314,6 +314,7 @@ Import `nix-lib.flakeModules.default` to get automatic treefmt configuration:
 ```
 
 The module automatically configures formatters for:
+
 - Rust (rustfmt with nightly)
 - Nix (nixfmt-rfc-style)
 - TOML (taplo with alignment and sorting)
@@ -324,7 +325,8 @@ The module automatically configures formatters for:
 
 #### `mkTreefmtConfig`
 
-Low-level function for manual treefmt configuration (used internally by the module).
+Low-level function for manual treefmt configuration (used internally by the
+module).
 
 ```nix
 treefmt = lib.mkTreefmtConfig {

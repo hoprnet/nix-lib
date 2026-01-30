@@ -31,11 +31,11 @@ let
   # Use provided Rust toolchain or default from rust-toolchain.toml or stable
   defaultRustToolchain =
     if rustToolchainFile != null then
-      (pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
+      (pkgs.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
         targets = [ cargoTarget ];
       }
     else
-      (pkgs.pkgsBuildHost.rust-bin.stable.latest.default).override {
+      (pkgs.rust-bin.stable.latest.default).override {
         targets = [ cargoTarget ];
       };
 
@@ -121,10 +121,10 @@ craneLib.devShell {
 
   LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
     [
-      pkgs.pkgsBuildHost.openssl
-      pkgs.pkgsBuildHost.curl
+      pkgs.openssl
+      pkgs.curl
     ]
-    ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.pkgsBuildHost.libgcc.lib ]
+    ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libgcc.lib ]
   );
 
   CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
