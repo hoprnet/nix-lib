@@ -91,8 +91,6 @@ let
     lcov # Code coverage
     skopeo # Container image tools
     dive # Docker layer analysis
-    trivy # Container vulnerability scanner
-    syft # SBOM generator
     go-containerregistry # OCI image manipulation tool (includes crane and gcrane)
     shellcheck # Shell script linting
     shfmt # Shell script formatting
