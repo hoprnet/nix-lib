@@ -39,6 +39,18 @@ inputs.nix-lib.url = "path:../nix-lib";
 
 ## Architecture
 
+### Flake Dependencies
+
+The library has the following input dependencies:
+
+- **Core**: nixpkgs, flake-utils, rust-overlay, crane
+- **Optional for flakeModule**: treefmt-nix, flake-parts
+
+If consuming projects don't use `nix-lib.flakeModules.default`, the treefmt-nix
+input is not required and can be removed for lighter dependency graphs. Most
+consuming projects will want the flakeModule for automatic formatting
+configuration, making treefmt-nix a practical requirement in practice.
+
 ### Library Structure
 
 The library is organized as a flake that exposes functions through
