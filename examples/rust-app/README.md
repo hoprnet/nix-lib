@@ -70,7 +70,7 @@ nix build .#docker
 docker load < result
 
 # Upload to registry (requires environment variables)
-GOOGLE_ACCESS_TOKEN=xxx IMAGE_TARGET=gcr.io/project/rust-app:latest nix run .#upload-docker
+IMAGE_TARGET=gcr.io/project/rust-app:latest nix run .#build-docker
 ```
 
 ### Quality Checks

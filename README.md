@@ -12,8 +12,6 @@ cross-compilation, Docker images, and comprehensive development environments.
 - **Security scanning**: Trivy vulnerability scanning for container images
 - **SBOM generation**: Generate Software Bill of Materials in SPDX and CycloneDX
   formats
-- **Multi-architecture support**: Create OCI manifest lists for automatic
-  platform selection
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration via flake module
 - **Man page generation**: Automatic manual page creation from binaries
@@ -227,48 +225,6 @@ sbom = lib.mkSBOM {
 # Results in: result/sbom.spdx.json and result/sbom.cyclonedx.json
 ```
 
-### Multi-Architecture Support
-
-#### `mkMultiArchManifest`
-
-Create OCI manifest list combining multiple platform-specific images.
-
-```nix
-# First, build images for different architectures
-imageAmd64 = lib.mkDockerImage {
-  name = "my-app";
-  tag = "latest";
-  Entrypoint = [ "${myPackageAmd64}/bin/my-app" ];
-  pkgsLinux = nixpkgs.legacyPackages.x86_64-linux;
-};
-
-imageArm64 = lib.mkDockerImage {
-  name = "my-app";
-  tag = "latest";
-  Entrypoint = [ "${myPackageArm64}/bin/my-app" ];
-  pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
-};
-
-# Create multi-arch manifest
-manifest = lib.mkMultiArchManifest {
-  name = "my-app";
-  tag = "latest";
-  images = [
-    { image = imageAmd64; platform = "linux/amd64"; }
-    { image = imageArm64; platform = "linux/arm64"; }
-  ];
-};
-
-# Build the manifest
-# nix build .#manifest
-# Results in:
-#   result/images/linux-amd64.tar.gz
-#   result/images/linux-arm64.tar.gz
-#   result/manifest.json
-#   result/metadata.json
-#   result/push-manifest.sh
-```
-
 ### Development Shells
 
 #### `mkDevShell`
@@ -338,32 +294,15 @@ treefmt = lib.mkTreefmtConfig {
 
 ### Utility Applications
 
-#### `mkDockerUploadApp`
+#### `mkDockerBuildApp`
 
-Create an app for building and uploading Docker images.
-
-```nix
-apps.upload-image = lib.mkDockerUploadApp myDockerImage;
-
-# Usage:
-# GOOGLE_ACCESS_TOKEN=... IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-image
-```
-
-#### `mkMultiArchUploadApp`
-
-Create an app for uploading multi-architecture manifests with all platform
-images.
+Create an app for building Docker images.
 
 ```nix
-apps.upload-manifest = lib.mkMultiArchUploadApp myMultiArchManifest;
+apps.upload-image = lib.mkDockerBuildApp myDockerImage;
 
 # Usage:
-# GOOGLE_ACCESS_TOKEN=... IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-manifest
-#
-# This will:
-# 1. Upload each platform-specific image (e.g., image:tag-linux-amd64, image:tag-linux-arm64)
-# 2. Create and push a manifest list at IMAGE_TARGET that references all platforms
-# 3. Enable automatic platform selection when users pull the image
+# IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-image
 ```
 
 #### `mkCheckApp`
@@ -461,12 +400,12 @@ Quick example:
         shellName = "My App Development";
       };
 
-      apps.upload = lib.mkDockerUploadApp myImage;
+      apps.upload = lib.mkDockerBuildApp myImage;
     };
 }
 ```
 
-### Complete Example with Security & Multi-Arch
+### Complete Example with Security
 
 ```nix
 {
@@ -526,16 +465,6 @@ Quick example:
           pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
         };
 
-        # Multi-architecture manifest
-        multiArchManifest = lib.mkMultiArchManifest {
-          name = "my-app";
-          tag = "latest";
-          images = [
-            { image = imageAmd64; platform = "linux/amd64"; }
-            { image = imageArm64; platform = "linux/arm64"; }
-          ];
-        };
-
         # Security scanning
         trivyScan = lib.mkTrivyScan {
           image = imageAmd64;
@@ -557,17 +486,13 @@ Quick example:
           arm64 = appArm64;
           docker-amd64 = imageAmd64;
           docker-arm64 = imageArm64;
-          docker-manifest = multiArchManifest;
           trivy-scan = trivyScan;
           sbom = sbom;
         };
 
         apps = {
-          # Upload single architecture image
-          upload-amd64 = lib.mkDockerUploadApp imageAmd64;
-
-          # Upload multi-arch manifest (recommended)
-          upload-manifest = lib.mkMultiArchUploadApp multiArchManifest;
+          # Build single architecture image
+          upload-amd64 = lib.mkDockerBuildApp imageAmd64;
 
           # Security audit
           audit = lib.mkAuditApp {
@@ -588,7 +513,7 @@ Quick example:
 
 ```bash
 # Build everything
-nix build .#docker-manifest
+nix build .#docker-amd64
 nix build .#trivy-scan
 nix build .#sbom
 
@@ -598,10 +523,10 @@ nix build .#trivy-scan
 # Upload SBOM to GitHub artifacts
 gh release upload v1.0.0 result/sbom.spdx.json result/sbom.cyclonedx.json
 
-# Upload multi-arch image to registry
+# Upload image to registry
 GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
 IMAGE_TARGET="gcr.io/my-project/my-app:v1.0.0" \
-nix run .#upload-manifest
+nix run .#upload-amd64
 ```
 
 ## Platform Support

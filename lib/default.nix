@@ -154,16 +154,6 @@ rec {
   # Re-export security utilities at top level for convenience
   inherit (dockerSecurity) mkTrivyScan mkSBOM;
 
-  # Multi-Architecture Support
-  # -------------------------
-  # Functions for creating multi-arch Docker manifests
-
-  # Import multi-arch utilities
-  multiArch = import ./multi-arch.nix { inherit pkgs; };
-
-  # Re-export multi-arch utilities at top level for convenience
-  inherit (multiArch) mkMultiArchManifest;
-
   # Development Shells
   # -----------------
   # Functions for creating development environments
@@ -261,10 +251,8 @@ rec {
 
   # Re-export app utilities at top level for convenience
   inherit (apps)
-    mkDockerUploadScript
-    mkDockerUploadApp
-    mkMultiArchUploadScript
-    mkMultiArchUploadApp
+    mkDockerBuildScript
+    mkDockerBuildApp
     mkCheckApp
     mkAuditApp
     mkFindPortApp
