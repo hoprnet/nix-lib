@@ -117,6 +117,7 @@ rec {
       basePackages ? null,
       tag ? "latest",
       pkgsLinux ? null, # Optional Linux pkgs for building on macOS
+      pathsToLink ? [ "/bin" ],
     }:
     let
       # Use provided Linux packages or create new ones
@@ -141,6 +142,7 @@ rec {
         extraContents
         basePackages
         tag
+        pathsToLink
         ;
     };
 

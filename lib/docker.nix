@@ -15,6 +15,7 @@
   extraContents ? [ ], # Additional packages to include in image
   basePackages ? null, # Override base packages (default: bash, cacert, coreutils, etc.)
   tag ? "latest", # Docker image tag
+  pathsToLink ? [ "/bin" ],
 }:
 let
   # Library path for essential system libraries
@@ -41,7 +42,7 @@ let
   copyToRoot = pkgs.buildEnv {
     name = "image-root";
     paths = actualBasePackages ++ extraContents;
-    pathsToLink = [ "/bin" ];
+    pathsToLink = pathsToLink;
   };
 
   # Default environment variables
