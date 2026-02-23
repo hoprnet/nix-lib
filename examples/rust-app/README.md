@@ -66,11 +66,6 @@ nix fmt
 # Build Docker image
 nix build .#docker
 
-# Load the image
-docker load < result
-
-# Upload to registry (requires environment variables)
-IMAGE_TARGET=gcr.io/project/rust-app:latest nix run .#build-docker
 ```
 
 ### Quality Checks

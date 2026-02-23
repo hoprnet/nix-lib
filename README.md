@@ -299,10 +299,7 @@ treefmt = lib.mkTreefmtConfig {
 Create an app for building Docker images.
 
 ```nix
-apps.upload-image = lib.mkDockerBuildApp myDockerImage;
-
-# Usage:
-# IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-image
+apps.docker-image = lib.mkDockerBuildApp myDockerImage;
 ```
 
 #### `mkCheckApp`
@@ -400,7 +397,7 @@ Quick example:
         shellName = "My App Development";
       };
 
-      apps.upload = lib.mkDockerBuildApp myImage;
+      apps.docker-image = lib.mkDockerBuildApp myImage;
     };
 }
 ```
@@ -492,7 +489,7 @@ Quick example:
 
         apps = {
           # Build single architecture image
-          upload-amd64 = lib.mkDockerBuildApp imageAmd64;
+          docker-image-amd64 = lib.mkDockerBuildApp imageAmd64;
 
           # Security audit
           audit = lib.mkAuditApp {
@@ -513,21 +510,12 @@ Quick example:
 
 ```bash
 # Build everything
-nix build .#docker-amd64
+nix build .#docker-image-amd64
 nix build .#trivy-scan
 nix build .#sbom
 
 # Check for vulnerabilities (fails if HIGH or CRITICAL found)
 nix build .#trivy-scan
-
-# Upload SBOM to GitHub artifacts
-gh release upload v1.0.0 result/sbom.spdx.json result/sbom.cyclonedx.json
-
-# Upload image to registry
-GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
-IMAGE_TARGET="gcr.io/my-project/my-app:v1.0.0" \
-nix run .#upload-amd64
-```
 
 ## Platform Support
 
