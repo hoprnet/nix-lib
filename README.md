@@ -455,8 +455,8 @@ Quick example:
 ### CI/CD Integration Example
 
 ```bash
-# Build everything
-nix build .#docker-image-amd64
+# Run the Docker build app (builds and loads the image into Docker)
+nix run .#docker-image-amd64
 ```
 
 ## Platform Support
