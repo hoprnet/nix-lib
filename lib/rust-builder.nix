@@ -60,12 +60,12 @@ let
       p: p.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)
     else if rustToolchainFile != null then
       p:
-      (p.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
+      (p.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
         targets = [ cargoTarget ];
       }
     else
       p:
-      p.pkgsBuildHost.rust-bin.stable.latest.default.override {
+      p.rust-bin.stable.latest.default.override {
         targets = [ cargoTarget ];
       };
 

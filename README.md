@@ -9,9 +9,6 @@ cross-compilation, Docker images, and comprehensive development environments.
   x86_64/ARM64, macOS x86_64/ARM64)
 - **Static linking**: Create fully static binaries with musl on Linux
 - **Docker images**: Build optimized, layered container images
-- **Security scanning**: Trivy vulnerability scanning for container images
-- **SBOM generation**: Generate Software Bill of Materials in SPDX and CycloneDX
-  formats
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration via flake module
 - **Man page generation**: Automatic manual page creation from binaries
@@ -187,44 +184,6 @@ image = lib.mkDockerImage {
 };
 ```
 
-### Docker Security
-
-#### `mkTrivyScan`
-
-Scan a Docker image for vulnerabilities using Trivy.
-
-```nix
-trivyScan = lib.mkTrivyScan {
-  image = myDockerImage;
-  name = "my-app-trivy-scan";
-  severity = "HIGH,CRITICAL";        # Optional: comma-separated severity levels
-  format = "json";                   # Optional: json, table, sarif, cyclonedx, spdx
-  vulnType = "os,library";           # Optional: vulnerability types to scan
-  exitCode = 1;                      # Optional: fail build on vulnerabilities
-  ignoreUnfixed = false;             # Optional: ignore unfixed vulnerabilities
-};
-
-# Build the scan report
-# nix build .#trivyScan
-# Results in: result/scan-report.json and result/scan-summary.txt
-```
-
-#### `mkSBOM`
-
-Generate Software Bill of Materials for a Docker image.
-
-```nix
-sbom = lib.mkSBOM {
-  image = myDockerImage;
-  name = "my-app-sbom";
-  formats = [ "spdx-json" "cyclonedx-json" ]; # Optional: default is both
-};
-
-# Build the SBOM
-# nix build .#sbom
-# Results in: result/sbom.spdx.json and result/sbom.cyclonedx.json
-```
-
 ### Development Shells
 
 #### `mkDevShell`
@@ -270,6 +229,7 @@ Import `nix-lib.flakeModules.default` to get automatic treefmt configuration:
 ```
 
 The module automatically configures formatters for:
+
 - Rust (rustfmt with nightly)
 - Nix (nixfmt-rfc-style)
 - TOML (taplo with alignment and sorting)
@@ -280,7 +240,8 @@ The module automatically configures formatters for:
 
 #### `mkTreefmtConfig`
 
-Low-level function for manual treefmt configuration (used internally by the module).
+Low-level function for manual treefmt configuration (used internally by the
+module).
 
 ```nix
 treefmt = lib.mkTreefmtConfig {
@@ -462,29 +423,14 @@ Quick example:
           pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
         };
 
-        # Security scanning
-        trivyScan = lib.mkTrivyScan {
-          image = imageAmd64;
-          severity = "HIGH,CRITICAL";
-          exitCode = 1; # Fail on vulnerabilities
-        };
-
-        # SBOM generation
-        sbom = lib.mkSBOM {
-          image = imageAmd64;
-          formats = [ "spdx-json" "cyclonedx-json" ];
-        };
-
-      in
-      {
+        in
+        {
         packages = {
           default = appAmd64;
           amd64 = appAmd64;
           arm64 = appArm64;
           docker-amd64 = imageAmd64;
           docker-arm64 = imageArm64;
-          trivy-scan = trivyScan;
-          sbom = sbom;
         };
 
         apps = {
@@ -511,11 +457,7 @@ Quick example:
 ```bash
 # Build everything
 nix build .#docker-image-amd64
-nix build .#trivy-scan
-nix build .#sbom
-
-# Check for vulnerabilities (fails if HIGH or CRITICAL found)
-nix build .#trivy-scan
+```
 
 ## Platform Support
 

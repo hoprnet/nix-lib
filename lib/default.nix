@@ -146,16 +146,6 @@ rec {
         ;
     };
 
-  # Docker Security Utilities
-  # ------------------------
-  # Functions for scanning images and generating SBOMs
-
-  # Import docker security utilities
-  dockerSecurity = import ./docker-security.nix { inherit pkgs; };
-
-  # Re-export security utilities at top level for convenience
-  inherit (dockerSecurity) mkTrivyScan mkSBOM;
-
   # Development Shells
   # -----------------
   # Functions for creating development environments
