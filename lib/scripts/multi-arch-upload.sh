@@ -5,7 +5,6 @@
 # manifest and creates a manifest list that enables automatic platform selection.
 #
 # Required environment variables:
-#   GOOGLE_ACCESS_TOKEN - Access token for registry authentication
 #   IMAGE_TARGET        - Full registry path (e.g., gcr.io/project/image:tag)
 #   MANIFEST_DIR        - Path to the manifest directory containing images and metadata
 
@@ -24,7 +23,6 @@ validate_env_var() {
 }
 
 # Validate required environment variables
-validate_env_var "GOOGLE_ACCESS_TOKEN"
 validate_env_var "IMAGE_TARGET"
 validate_env_var "MANIFEST_DIR"
 
@@ -59,11 +57,13 @@ for platform in $PLATFORMS; do
 done
 echo ""
 
+skopeo_base_args=("--policy=$POLICY_JSON")
 # Prepare skopeo base args
-skopeo_base_args=(
-  "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
-  "--policy=$POLICY_JSON"
-)
+if [[ -n ${GOOGLE_ACCESS_TOKEN:-} ]]; then
+  skopeo_base_args+=(
+    "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
+  )
+fi
 
 # Array to store pushed image references for manifest creation
 PUSHED_REFS=()
@@ -113,13 +113,6 @@ echo ""
 
 # Extract registry from IMAGE_TARGET (e.g., gcr.io from gcr.io/project/image:tag)
 REGISTRY=$(echo "$IMAGE_TARGET" | cut -d'/' -f1)
-
-# Authenticate with crane using the Google access token
-echo "Authenticating with registry: $REGISTRY"
-if ! echo "$GOOGLE_ACCESS_TOKEN" | crane auth login "$REGISTRY" --username=oauth2accesstoken --password-stdin; then
-  echo "ERROR: Failed to authenticate with registry" >&2
-  exit 4
-fi
 
 echo "Creating multi-architecture manifest..."
 

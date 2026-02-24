@@ -5,7 +5,6 @@
 # registry using skopeo. It supports Google Cloud Registry authentication.
 #
 # Required environment variables:
-#   GOOGLE_ACCESS_TOKEN - Access token for registry authentication
 #   IMAGE_TARGET        - Full registry path (e.g., gcr.io/project/image:tag)
 #   IMAGE_DERIVATION    - Nix store path or flake reference to build
 #
@@ -27,7 +26,6 @@ validate_env_var() {
 }
 
 # Validate required environment variables
-validate_env_var "GOOGLE_ACCESS_TOKEN"
 validate_env_var "IMAGE_TARGET"
 validate_env_var "IMAGE_DERIVATION"
 
@@ -52,12 +50,14 @@ if [[ ! -f $OCI_ARCHIVE ]]; then
 fi
 
 echo "Docker image built successfully: $OCI_ARCHIVE"
-
+local skopeo_args=()
 # Prepare skopeo command with security options
-skopeo_args=(
-  "copy"
-  "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
-)
+if [[ -n ${GOOGLE_ACCESS_TOKEN:-} ]]; then
+  skopeo_args+=(
+    "copy"
+    "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
+  )
+fi
 
 # Add insecure policy flag only if explicitly requested
 if [[ ${SKOPEO_INSECURE_POLICY:-} == "1" ]]; then
