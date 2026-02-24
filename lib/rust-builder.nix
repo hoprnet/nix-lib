@@ -97,7 +97,29 @@ let
     else
       { };
 
-  buildEnv = buildEnvBase // buildEnvCross // buildEnvStatic;
+  # When cross-compiling, proc-macros (e.g. sqlx-macros) are compiled for the
+  # build platform but openssl-sys's build script finds the target platform's
+  # openssl via pkg-config. This causes architecture mismatch linker errors.
+  # Set target-specific OPENSSL env vars so openssl-sys finds the correct
+  # library for each architecture, and disable pkg-config to prevent conflicts.
+  targetOpenssl = if isStatic then pkgs.pkgsStatic.openssl else pkgs.openssl;
+  buildHostOpenssl = pkgsLocal.openssl;
+  buildHostTarget =
+    if buildPlatform.config == "arm64-apple-darwin" then "aarch64-apple-darwin" else buildPlatform.config;
+
+  buildEnvOpenssl =
+    if isCross then
+      {
+        OPENSSL_NO_PKG_CONFIG = "1";
+        "${envCase cargoTarget}_OPENSSL_LIB_DIR" = "${targetOpenssl.out}/lib";
+        "${envCase cargoTarget}_OPENSSL_INCLUDE_DIR" = "${targetOpenssl.dev}/include";
+        "${envCase buildHostTarget}_OPENSSL_LIB_DIR" = "${buildHostOpenssl.out}/lib";
+        "${envCase buildHostTarget}_OPENSSL_INCLUDE_DIR" = "${buildHostOpenssl.dev}/include";
+      }
+    else
+      { };
+
+  buildEnv = buildEnvBase // buildEnvCross // buildEnvStatic // buildEnvOpenssl;
 
 in
 {
