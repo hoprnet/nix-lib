@@ -50,11 +50,10 @@ if [[ ! -f $OCI_ARCHIVE ]]; then
 fi
 
 echo "Docker image built successfully: $OCI_ARCHIVE"
-local skopeo_args=()
+skopeo_args=("copy")
 # Prepare skopeo command with security options
 if [[ -n ${GOOGLE_ACCESS_TOKEN:-} ]]; then
   skopeo_args+=(
-    "copy"
     "--dest-registry-token=$GOOGLE_ACCESS_TOKEN"
   )
 fi
