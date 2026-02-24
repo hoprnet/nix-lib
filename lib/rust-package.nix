@@ -97,6 +97,18 @@ let
   darwinNativeBuildInputs =
     if !isDarwinForDarwin && isDarwinForNonDarwin then [ setupHookDarwin ] else [ ];
 
+  # When cross-compiling, proc-macros (e.g. sqlx-macros) are compiled for the
+  # build platform but may link against C libraries like openssl. Provide the
+  # build-platform openssl via nativeBuildInputs so the linker can find
+  # architecture-compatible libraries for proc-macro compilation.
+  crossNativeBuildInputs =
+    if isCross then
+      [
+        pkgs.pkgsBuildHost.openssl
+      ]
+    else
+      [ ];
+
   buildInputs =
     if isStatic then
       with pkgs.pkgsStatic;
@@ -123,6 +135,7 @@ let
     ++ stdenv.extraNativeBuildInputs
     ++ darwinNativeBuildInputs
     ++ linuxNativeBuildInputs
+    ++ crossNativeBuildInputs
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
