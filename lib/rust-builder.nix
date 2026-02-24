@@ -104,7 +104,8 @@ let
   # library for each architecture, and disable pkg-config to prevent conflicts.
   targetOpenssl = if isStatic then pkgs.pkgsStatic.openssl else pkgs.openssl;
   buildHostOpenssl = pkgsLocal.openssl;
-  buildHostTarget = buildPlatform.config;
+  buildHostTarget =
+    if buildPlatform.config == "arm64-apple-darwin" then "aarch64-apple-darwin" else buildPlatform.config;
 
   buildEnvOpenssl =
     if isCross then
