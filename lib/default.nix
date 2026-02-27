@@ -243,8 +243,6 @@ rec {
 
   # Re-export app utilities at top level for convenience
   inherit (apps)
-    mkDockerBuildScript
-    mkDockerBuildApp
     mkCheckApp
     mkAuditApp
     mkFindPortApp

@@ -10,44 +10,6 @@
 }:
 
 rec {
-  # Docker Upload Utilities
-  # ----------------------
-
-  # Create a script that builds a Docker image
-  #
-  # Arguments:
-  #   image: Derivation that produces a Docker image (e.g., from dockerTools.buildLayeredImage)
-  #
-  # Required environment variables:
-  #   None (Image derivation path is injected at build time)
-  mkDockerBuildScript =
-    image:
-    pkgs.writeShellApplication {
-      name = "docker-build-image";
-      runtimeInputs = with pkgs; [
-        gzip
-        nix
-        jq
-        docker
-      ];
-      text = ''
-        # Set IMAGE_DERIVATION to the image path for the script
-        export IMAGE_DERIVATION="${image}"
-        ${builtins.readFile ./scripts/docker-build.sh}
-      '';
-    };
-
-  # Create a flake app from a Docker build script
-  # This makes the script runnable via `nix run`
-  #
-  # Arguments:
-  #   image: Docker image derivation to build
-  mkDockerBuildApp =
-    image:
-    flake-utils.lib.mkApp {
-      drv = mkDockerBuildScript image;
-    };
-
   # Development Utilities
   # --------------------
 

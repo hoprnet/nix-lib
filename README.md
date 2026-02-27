@@ -255,14 +255,6 @@ treefmt = lib.mkTreefmtConfig {
 
 ### Utility Applications
 
-#### `mkDockerBuildApp`
-
-Create an app for building Docker images.
-
-```nix
-apps.docker-image = lib.mkDockerBuildApp myDockerImage;
-```
-
 #### `mkCheckApp`
 
 Create an app for running Nix checks.
@@ -358,7 +350,6 @@ Quick example:
         shellName = "My App Development";
       };
 
-      apps.docker-image = lib.mkDockerBuildApp myImage;
     };
 }
 ```
@@ -434,9 +425,6 @@ Quick example:
         };
 
         apps = {
-          # Build single architecture image
-          docker-image-amd64 = lib.mkDockerBuildApp imageAmd64;
-
           # Security audit
           audit = lib.mkAuditApp {
             rustToolchainFile = ./rust-toolchain.toml;

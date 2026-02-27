@@ -113,7 +113,6 @@ The library is organized as a flake that exposes functions through
 
 #### Utility Apps (`apps.nix`)
 
-- **mkDockerBuildApp**: Builds Docker images
 - **mkCheckApp**: Runs nix flake checks
 - **mkAuditApp**: Runs cargo-audit for security scanning
 - **mkFindPortApp**: Finds available ports for CI testing

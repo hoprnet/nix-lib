@@ -142,9 +142,6 @@
               program = "${rust-app}/bin/rust-app";
             };
 
-            # Build Docker image
-            build-docker = lib.mkDockerBuildApp dockerImage;
-
             # Run security audit
             audit = lib.mkAuditApp { };
           };
