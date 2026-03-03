@@ -16,7 +16,6 @@
   treefmtPrograms ? [ ], # Optional treefmt programs
   includePostgres ? false, # Whether to include PostgreSQL tools
   postgresPackage ? null, # Optional PostgreSQL package override
-  env ? { } # Additional environment variables
 }:
 
 let
@@ -127,4 +126,4 @@ craneLib.devShell {
   );
 
   CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
-} // env
+}
