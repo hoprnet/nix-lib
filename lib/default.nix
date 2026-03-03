@@ -97,10 +97,18 @@ rec {
 
   # Rust Package Builder
   # -------------------
-  # Low-level function for building Rust packages
+  # Low-level function for building Rust packages (binary crates)
   # Most users should use builder.callPackage instead
 
   mkRustPackage = import ./rust-package.nix;
+
+  # Rust Library Builder
+  # --------------------
+  # Low-level function for building Rust library crates (lib.rs, no main.rs)
+  # Installs .rlib and .a artifacts to $out/lib/
+  # Most users should use builder.callPackage instead
+
+  mkRustLibrary = import ./rust-library.nix;
 
   # Docker Images
   # ------------

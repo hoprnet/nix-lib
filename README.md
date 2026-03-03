@@ -8,6 +8,7 @@ cross-compilation, Docker images, and comprehensive development environments.
 - **Cross-compilation**: Build Rust binaries for multiple platforms (Linux
   x86_64/ARM64, macOS x86_64/ARM64)
 - **Static linking**: Create fully static binaries with musl on Linux
+- **Library crates**: Build Rust library crates and install `.rlib`/`.a` artifacts
 - **Docker images**: Build optimized, layered container images
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration via flake module
@@ -164,6 +165,40 @@ package = builder.callPackage lib.mkRustPackage {
   runTests = false;          # Optional: run tests
   runClippy = false;         # Optional: run clippy
   buildDocs = false;         # Optional: build documentation
+};
+```
+
+### Rust Libraries
+
+#### `mkRustLibrary`
+
+Build a Rust library crate (a crate with `lib.rs` and no `main.rs`). The
+compiled `.rlib` and `.a` artifacts are installed to `$out/lib/`. Call via `builder.callPackage`.
+
+```nix
+myLib = builder.callPackage lib.mkRustLibrary {
+  src = sources.main;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+  CARGO_PROFILE = "release"; # Optional: release/dev/test (default: release)
+  runTests = false;          # Optional: run tests
+  runClippy = false;         # Optional: run clippy
+};
+
+# Artifacts are available at:
+# ${myLib}/lib/libmy_lib-<hash>.rlib
+# ${myLib}/lib/libmy_lib.a          (if a C-compatible static lib was produced)
+```
+
+Cross-compilation works exactly as with `mkRustPackage`:
+
+```nix
+myLibAmd64 = builders."x86_64-linux".callPackage lib.mkRustLibrary {
+  src = sources.main;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
 };
 ```
 
@@ -440,11 +475,78 @@ Quick example:
 }
 ```
 
+### Library Crate Example
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/release-25.05";
+    nix-lib.url = "github:hoprnet/nix-lib";
+  };
+
+  outputs = { self, nixpkgs, nix-lib, ... }:
+    let
+      system = "x86_64-linux";
+      lib = nix-lib.lib.${system};
+
+      builders = lib.mkRustBuilders {
+        rustToolchainFile = ./rust-toolchain.toml;
+      };
+
+      sources = {
+        main = lib.mkSrc { root = ./.; fs = nixpkgs.lib.fileset; };
+        deps = lib.mkDepsSrc { root = ./.; fs = nixpkgs.lib.fileset; };
+      };
+
+      # Build the library for the local platform
+      myLib = builders.local.callPackage lib.mkRustLibrary {
+        src = sources.main;
+        depsSrc = sources.deps;
+        cargoToml = ./Cargo.toml;
+        rev = "v1.0.0";
+      };
+
+      # Cross-compile the same library for x86_64 Linux (static)
+      myLibAmd64 = builders."x86_64-linux".callPackage lib.mkRustLibrary {
+        src = sources.main;
+        depsSrc = sources.deps;
+        cargoToml = ./Cargo.toml;
+        rev = "v1.0.0";
+      };
+
+    in
+    {
+      packages = {
+        default = myLib;
+        amd64 = myLibAmd64;
+      };
+
+      # Run clippy on the library
+      checks.clippy = builders.local.callPackage lib.mkRustLibrary {
+        src = sources.main;
+        depsSrc = sources.deps;
+        cargoToml = ./Cargo.toml;
+        rev = "v1.0.0";
+        runClippy = true;
+      };
+    };
+}
+```
+
 ### CI/CD Integration Example
 
 ```bash
-# Generate the .tar.gz docker image
-nix build .#docker-image-amd64
+# Build a Docker image — creates ./result symlink to the .tar.gz in the Nix store
+nix build .#docker-amd64
+
+# Push to a registry with skopeo (no Docker daemon required)
+skopeo copy \
+  --dest-creds "$REGISTRY_USER:$REGISTRY_TOKEN" \
+  docker-archive:./result \
+  docker://ghcr.io/org/my-app:latest
+
+# Load into the local Docker daemon for testing
+docker load < ./result
 ```
 
 ## Platform Support
