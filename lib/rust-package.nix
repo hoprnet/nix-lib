@@ -165,7 +165,7 @@ let
     cargoArtifacts = null;
     cargoExtraArgs = ""; # overwrite the default to build all docs
     cargoDocExtraArgs = "--workspace --no-deps";
-    RUSTDOCFLAGS = "--enable-index-page -Z unstable-options";
+    RUSTDOCFLAGS = "--enable-index-page -Z unstable-options -D warnings";
     CARGO_TARGET_DIR = "target/";
     LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
     postBuild = ''
