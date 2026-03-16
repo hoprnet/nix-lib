@@ -210,6 +210,14 @@
               cargoTestExtraArgs = "--test '*' -- --test-threads=1";
             };
 
+            # Run all tests with nightly toolchain
+            test-nightly = mkTestNightly { };
+
+            # Run unit tests with nightly toolchain
+            unit-tests-nightly = mkTestNightly {
+              cargoTestExtraArgs = "--lib";
+            };
+
             # Run clippy linter
             clippy = builders.local.callPackage lib.mkRustPackage {
               src = sources.main;

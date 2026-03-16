@@ -30,7 +30,7 @@
   runClippy ? false, # Whether to run Clippy linter
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
-  rawCargoArgs ? false, # When true, pass cargoExtraArgs as-is without prepending -p ${pname}
+  prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
@@ -141,7 +141,7 @@ let
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
-    cargoExtraArgs = if rawCargoArgs then cargoExtraArgs else "-p ${pname} ${cargoExtraArgs}";
+    cargoExtraArgs = if prependPackageName then "-p ${pname} ${cargoExtraArgs}" else cargoExtraArgs;
     strictDeps = true;
     # disable running tests automatically for now
     doCheck = false;

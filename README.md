@@ -173,7 +173,8 @@ package = builder.callPackage lib.mkRustPackage {
 ##### Splitting Unit and Integration Tests
 
 Tests can be split into separate Nix derivations for independent caching and
-execution:
+execution. The examples below assume `sources.test` was created with
+`lib.mkTestSrc` (see [Source Filtering](#source-filtering)).
 
 ```nix
 # Unit tests only (cargo test --lib)
