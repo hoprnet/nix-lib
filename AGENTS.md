@@ -92,6 +92,10 @@ The library is organized as a flake that exposes functions through
 - **Low-level builder**: Called via `builder.callPackage` from consumer projects
 - **Multi-mode**: Supports release builds, tests (runTests), clippy (runClippy),
   docs (buildDocs), and benchmarks (runBench)
+- **Configurable test arguments**: The `cargoTestExtraArgs` parameter (default:
+  `"--workspace"`) controls what flags are passed to `cargo test`. This enables
+  splitting unit tests (`--lib`) and integration tests (`--test '*'`) into
+  separate Nix derivations, each independently cacheable by Nix
 - **Cargo profiles**: Controlled via CARGO_PROFILE (release/dev/test)
 - **Cross-compilation handling**:
   - Patches interpreter for cross-compiled Linux binaries (patchelf)
@@ -138,6 +142,12 @@ The library is organized as a flake that exposes functions through
 
 5. **Optional toolchain file**: Most functions accept an optional
    `rustToolchainFile` parameter for reproducible Rust versions
+
+6. **Split test derivations**: Tests are built by Nix (not inside `nix develop`)
+   to leverage Nix's caching. Unit tests and integration tests are separate
+   derivations via `cargoTestExtraArgs`, exposed as both packages (`nix build`)
+   and checks (`nix flake check`). Arguments after `--` (e.g.,
+   `--test-threads=1`) can be included in `cargoTestExtraArgs`
 
 ## Important Notes
 

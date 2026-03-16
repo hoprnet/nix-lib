@@ -93,6 +93,33 @@
             ];
           };
 
+          # Helper for building test derivations
+          mkTest =
+            {
+              builder ? builders.local,
+              cargoTestExtraArgs ? "--workspace",
+            }:
+            builder.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev cargoTestExtraArgs;
+              runTests = true;
+            };
+
+          # Helper for building test derivations with nightly
+          mkTestNightly =
+            {
+              cargoTestExtraArgs ? "--workspace",
+            }:
+            builders.localNightly.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev cargoTestExtraArgs;
+              runTests = true;
+            };
+
         in
         {
           # Packages that can be built with `nix build`
@@ -111,6 +138,28 @@
 
             # Docker image
             docker = dockerImage;
+
+            # Unit tests (cargo test --lib), built by Nix for caching
+            # Usage: nix build .#unit-tests
+            unit-tests = mkTest {
+              cargoTestExtraArgs = "--lib";
+            };
+
+            # Integration tests (cargo test --test '*'), built by Nix for caching
+            # Usage: nix build .#integration-tests
+            integration-tests = mkTest {
+              cargoTestExtraArgs = "--test '*' -- --test-threads=1";
+            };
+
+            # All tests with nightly toolchain
+            # Usage: nix build .#test-nightly
+            test-nightly = mkTestNightly { };
+
+            # Unit tests with nightly toolchain
+            # Usage: nix build .#unit-tests-nightly
+            unit-tests-nightly = mkTestNightly {
+              cargoTestExtraArgs = "--lib";
+            };
           };
 
           # Development shell
@@ -151,13 +200,14 @@
 
           # Checks that run with `nix flake check`
           checks = {
-            # Run tests
-            tests = builders.local.callPackage lib.mkRustPackage {
-              src = sources.test;
-              depsSrc = sources.deps;
-              cargoToml = ./Cargo.toml;
-              inherit rev;
-              runTests = true;
+            # Run unit tests (cargo test --lib)
+            unit-tests = mkTest {
+              cargoTestExtraArgs = "--lib";
+            };
+
+            # Run integration tests (cargo test --test '*')
+            integration-tests = mkTest {
+              cargoTestExtraArgs = "--test '*' -- --test-threads=1";
             };
 
             # Run clippy linter

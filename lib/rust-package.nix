@@ -10,6 +10,7 @@
   buildDocs ? false, # Whether to build documentation
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
+  cargoTestExtraArgs ? "--workspace", # Additional arguments for cargo test (before --)
   cargoToml, # Path to the Cargo.toml file
   craneLib, # Crane library for Rust builds
   depsSrc, # Source tree with only dependencies
@@ -151,7 +152,7 @@ let
     if runTests then
       sharedArgsBase
       // {
-        cargoTestExtraArgs = "--workspace";
+        inherit cargoTestExtraArgs;
         doCheck = true;
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
         RUST_BACKTRACE = "full";
