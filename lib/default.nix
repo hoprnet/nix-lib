@@ -61,6 +61,7 @@ rec {
       buildersLib = import ./rust-builders.nix {
         inherit
           nixpkgs
+          nixpkgs-unstable
           rust-overlay
           crane
           localSystem
@@ -85,6 +86,7 @@ rec {
     import ./rust-builder.nix {
       inherit
         nixpkgs
+        nixpkgs-unstable
         rust-overlay
         crane
         localSystem

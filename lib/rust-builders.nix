@@ -9,6 +9,7 @@
 
 {
   nixpkgs,
+  nixpkgs-unstable ? nixpkgs,
   rust-overlay,
   crane,
   localSystem,
@@ -30,6 +31,7 @@ rec {
     import ./rust-builder.nix {
       inherit
         nixpkgs
+        nixpkgs-unstable
         rust-overlay
         crane
         localSystem

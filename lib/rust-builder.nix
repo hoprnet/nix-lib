@@ -13,6 +13,7 @@
   isStatic ? false, # Whether to create statically linked binaries
   localSystem, # Host system where compilation occurs
   nixpkgs, # Nixpkgs package set
+  nixpkgs-unstable ? nixpkgs, # Unstable nixpkgs (used for cargo-llvm-cov)
   rust-overlay, # Rust toolchain overlay
   useRustNightly ? false, # Whether to use nightly Rust toolchain
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
@@ -80,7 +81,23 @@ let
         extensions = llvmToolsExtensions;
       };
 
-  craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchainFun;
+  craneLibBase = (crane.mkLib pkgs).overrideToolchain rustToolchainFun;
+
+  # When llvm-tools are enabled (for coverage), override cargo-llvm-cov to use
+  # the version from nixpkgs-unstable, as the release channel may have it
+  # marked as broken or outdated.
+  pkgsUnstableLocal = import nixpkgs-unstable {
+    localSystem = args.localSystem;
+  };
+  craneLib =
+    if withLlvmTools then
+      craneLibBase.overrideScope (
+        _final: _prev: {
+          cargo-llvm-cov = pkgsUnstableLocal.cargo-llvm-cov;
+        }
+      )
+    else
+      craneLibBase;
 
   # mold is only supported on Linux builds, so falling back to lld for Darwin
   linker = if buildPlatform.isDarwin then "lld" else "mold";
