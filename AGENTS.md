@@ -95,7 +95,9 @@ The library is organized as a flake that exposes functions through
 - **Configurable test arguments**: The `cargoTestExtraArgs` parameter (default:
   `"--workspace"`) controls what flags are passed to `cargo test`. This enables
   splitting unit tests (`--lib`) and integration tests (`--test '*'`) into
-  separate Nix derivations, each independently cacheable by Nix
+  separate Nix derivations, each independently cacheable by Nix. The
+  `prependPackageName` flag (default: `true`) controls whether `-p ${pname}` is
+  prepended to `cargoExtraArgs`; set to `false` for workspace-wide operations
 - **Cargo profiles**: Controlled via CARGO_PROFILE (release/dev/test)
 - **Cross-compilation handling**:
   - Patches interpreter for cross-compiled Linux binaries (patchelf)

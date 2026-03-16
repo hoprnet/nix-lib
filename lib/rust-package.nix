@@ -11,6 +11,7 @@
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
   cargoTestExtraArgs ? "--workspace", # Additional arguments for cargo test (before --)
+  prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   cargoToml, # Path to the Cargo.toml file
   craneLib, # Crane library for Rust builds
   depsSrc, # Source tree with only dependencies
@@ -30,7 +31,6 @@
   runClippy ? false, # Whether to run Clippy linter
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
-  prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs

@@ -107,18 +107,14 @@
               runTests = true;
             };
 
-          # Helper for building test derivations with nightly
-          mkTestNightly =
-            {
-              cargoTestExtraArgs ? "--workspace",
-            }:
-            builders.localNightly.callPackage lib.mkRustPackage {
-              src = sources.test;
-              depsSrc = sources.deps;
-              cargoToml = ./Cargo.toml;
-              inherit rev cargoTestExtraArgs;
-              runTests = true;
-            };
+          # Pre-built test derivations, reused in both packages and checks
+          unit-tests = mkTest { cargoTestExtraArgs = "--lib"; };
+          integration-tests = mkTest { cargoTestExtraArgs = "--test '*' -- --test-threads=1"; };
+          test-nightly = mkTest { builder = builders.localNightly; };
+          unit-tests-nightly = mkTest {
+            builder = builders.localNightly;
+            cargoTestExtraArgs = "--lib";
+          };
 
         in
         {
@@ -139,27 +135,13 @@
             # Docker image
             docker = dockerImage;
 
-            # Unit tests (cargo test --lib), built by Nix for caching
-            # Usage: nix build .#unit-tests
-            unit-tests = mkTest {
-              cargoTestExtraArgs = "--lib";
-            };
-
-            # Integration tests (cargo test --test '*'), built by Nix for caching
-            # Usage: nix build .#integration-tests
-            integration-tests = mkTest {
-              cargoTestExtraArgs = "--test '*' -- --test-threads=1";
-            };
-
-            # All tests with nightly toolchain
-            # Usage: nix build .#test-nightly
-            test-nightly = mkTestNightly { };
-
-            # Unit tests with nightly toolchain
-            # Usage: nix build .#unit-tests-nightly
-            unit-tests-nightly = mkTestNightly {
-              cargoTestExtraArgs = "--lib";
-            };
+            # Test derivations, built by Nix for caching
+            inherit
+              unit-tests
+              integration-tests
+              test-nightly
+              unit-tests-nightly
+              ;
           };
 
           # Development shell
@@ -200,23 +182,12 @@
 
           # Checks that run with `nix flake check`
           checks = {
-            # Run unit tests (cargo test --lib)
-            unit-tests = mkTest {
-              cargoTestExtraArgs = "--lib";
-            };
-
-            # Run integration tests (cargo test --test '*')
-            integration-tests = mkTest {
-              cargoTestExtraArgs = "--test '*' -- --test-threads=1";
-            };
-
-            # Run all tests with nightly toolchain
-            test-nightly = mkTestNightly { };
-
-            # Run unit tests with nightly toolchain
-            unit-tests-nightly = mkTestNightly {
-              cargoTestExtraArgs = "--lib";
-            };
+            inherit
+              unit-tests
+              integration-tests
+              test-nightly
+              unit-tests-nightly
+              ;
 
             # Run clippy linter
             clippy = builders.local.callPackage lib.mkRustPackage {

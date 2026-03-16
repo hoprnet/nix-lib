@@ -165,6 +165,7 @@ package = builder.callPackage lib.mkRustPackage {
   CARGO_PROFILE = "release";           # Optional: release/dev/test
   runTests = false;                    # Optional: run tests
   cargoTestExtraArgs = "--workspace";  # Optional: args for cargo test
+  prependPackageName = true;           # Optional: prepend -p ${pname} to cargo args
   runClippy = false;                   # Optional: run clippy
   buildDocs = false;                   # Optional: build documentation
 };
