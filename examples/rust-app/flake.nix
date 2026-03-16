@@ -169,6 +169,18 @@
               runClippy = true;
             };
 
+            # Code coverage (outputs LCOV report)
+            coverage = builders.localCoverage.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev;
+              runCoverage = true;
+              # Override defaults if needed:
+              # cargoLlvmCovExtraArgs = "--html --output-dir $out";
+              # cargoLlvmCovCommand = "test";
+            };
+
             # Formatting check
             formatting = config.treefmt.build.check self;
           };

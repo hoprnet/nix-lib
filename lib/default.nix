@@ -80,6 +80,7 @@ rec {
       isStatic ? false,
       useRustNightly ? false,
       rustToolchainFile ? null,
+      withLlvmTools ? false,
     }:
     import ./rust-builder.nix {
       inherit
@@ -92,6 +93,7 @@ rec {
         isStatic
         useRustNightly
         rustToolchainFile
+        withLlvmTools
         ;
     };
 
