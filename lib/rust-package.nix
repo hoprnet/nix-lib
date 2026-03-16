@@ -187,6 +187,7 @@ let
         pname = pnameDeps;
         src = depsSrc;
         doCheck = false;
+        cargoCheckExtraArgs = "--all-targets";
       }
     );
   };
