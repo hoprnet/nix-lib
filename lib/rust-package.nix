@@ -186,6 +186,7 @@ let
       // {
         pname = pnameDeps;
         src = depsSrc;
+        doCheck = false;
       }
     );
   };
