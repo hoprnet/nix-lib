@@ -186,8 +186,10 @@ let
       // {
         pname = pnameDeps;
         src = depsSrc;
-        doCheck = false;
-        cargoCheckExtraArgs = "--all-targets";
+        # Override test args for deps: run --lib tests (which are empty stubs)
+        # to ensure all test artifacts including build.rs outputs are generated,
+        # without requiring actual integration test files in the dep source.
+        cargoTestExtraArgs = "--lib";
       }
     );
   };
