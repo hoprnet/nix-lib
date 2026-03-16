@@ -57,7 +57,7 @@ let
   cargoTarget =
     if hostPlatform.config == "arm64-apple-darwin" then "aarch64-apple-darwin" else hostPlatform.config;
 
-  llvmToolsExtensions = if withLlvmTools then [ "llvm-tools" ] else [ ];
+  llvmToolsExtensions = if withLlvmTools then [ "llvm-tools-preview" ] else [ ];
 
   rustToolchainFun =
     if useRustNightly then
