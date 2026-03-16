@@ -30,7 +30,7 @@
   runClippy ? false, # Whether to run Clippy linter
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
-  workspaceWideTest ? false, # When true, run tests across the entire workspace instead of just -p ${pname}
+  rawCargoArgs ? false, # When true, pass cargoExtraArgs as-is without prepending -p ${pname}
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
@@ -141,8 +141,7 @@ let
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
-    cargoExtraArgs =
-      if workspaceWideTest then "--workspace ${cargoExtraArgs}" else "-p ${pname} ${cargoExtraArgs}";
+    cargoExtraArgs = if rawCargoArgs then cargoExtraArgs else "-p ${pname} ${cargoExtraArgs}";
     strictDeps = true;
     # disable running tests automatically for now
     doCheck = false;
