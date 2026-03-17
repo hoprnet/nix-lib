@@ -147,6 +147,7 @@
           # Development shell
           devShells.default = lib.mkDevShell {
             shellName = "Rust App Example";
+            withLlvmTools = true;
             extraPackages = with pkgs; [
               # Additional development tools
               cargo-edit
@@ -205,6 +206,18 @@
               cargoToml = ./Cargo.toml;
               inherit rev;
               buildBench = true;
+            };
+
+            # Code coverage (outputs LCOV report)
+            coverage = builders.localCoverage.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev;
+              runCoverage = true;
+              # Override defaults if needed:
+              # cargoLlvmCovExtraArgs = "--html --output-dir $out";
+              # cargoLlvmCovCommand = "test";
             };
 
             # Formatting check

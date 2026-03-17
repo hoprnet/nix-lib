@@ -29,9 +29,12 @@
   postInstall ? null, # Optional post-install script
   rev ? "unknown", # Git revision for version tracking
   runClippy ? false, # Whether to run Clippy linter
+  runCoverage ? false, # Whether to run code coverage
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
   buildBench ? false, # Whether to compile benchmarks without running (--no-run)
+  cargoLlvmCovExtraArgs ? "--lcov --output-path $out", # Extra args for cargo-llvm-cov
+  cargoLlvmCovCommand ? "test", # Subcommand for cargo-llvm-cov (test, run, etc.)
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
@@ -64,7 +67,9 @@ let
   crateInfo = craneLib.crateNameFromCargoToml { inherit cargoToml; };
   pname = crateInfo.pname;
   actualCargoProfile =
-    if runTests then
+    if runCoverage then
+      "test"
+    else if runTests then
       "test"
     else if runClippy then
       "dev"
@@ -146,7 +151,13 @@ let
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
-    cargoExtraArgs = if prependPackageName then "-p ${pname} ${cargoExtraArgs}" else cargoExtraArgs;
+    cargoExtraArgs =
+      if runCoverage then
+        "--workspace ${cargoExtraArgs}"
+      else if prependPackageName then
+        "-p ${pname} ${cargoExtraArgs}"
+      else
+        cargoExtraArgs;
     strictDeps = true;
     # disable running tests automatically for now
     doCheck = false;
@@ -155,7 +166,14 @@ let
   };
 
   sharedArgs =
-    if runTests then
+    if runCoverage then
+      sharedArgsBase
+      // {
+        inherit cargoLlvmCovExtraArgs cargoLlvmCovCommand;
+        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        RUST_BACKTRACE = "full";
+      }
+    else if runTests then
       sharedArgsBase
       // {
         inherit cargoTestExtraArgs;
@@ -213,7 +231,9 @@ let
   };
 
   builder =
-    if runTests then
+    if runCoverage then
+      craneLib.cargoLlvmCov
+    else if runTests then
       craneLib.cargoTest
     else if runClippy then
       craneLib.cargoClippy

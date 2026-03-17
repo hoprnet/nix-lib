@@ -13,9 +13,11 @@
   isStatic ? false, # Whether to create statically linked binaries
   localSystem, # Host system where compilation occurs
   nixpkgs, # Nixpkgs package set
+  nixpkgs-unstable ? nixpkgs, # Unstable nixpkgs (used for cargo-llvm-cov)
   rust-overlay, # Rust toolchain overlay
   useRustNightly ? false, # Whether to use nightly Rust toolchain
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
+  withLlvmTools ? false, # Whether to include llvm-tools for code coverage
 }@args:
 let
   crossSystem0 = crossSystem;
@@ -55,21 +57,47 @@ let
   cargoTarget =
     if hostPlatform.config == "arm64-apple-darwin" then "aarch64-apple-darwin" else hostPlatform.config;
 
+  llvmToolsExtensions = if withLlvmTools then [ "llvm-tools-preview" ] else [ ];
+
   rustToolchainFun =
     if useRustNightly then
-      p: p.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)
+      p:
+      p.rust-bin.selectLatestNightlyWith (
+        toolchain:
+        toolchain.default.override {
+          extensions = llvmToolsExtensions;
+        }
+      )
     else if rustToolchainFile != null then
       p:
       (p.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
         targets = [ cargoTarget ];
+        extensions = llvmToolsExtensions;
       }
     else
       p:
       p.rust-bin.stable.latest.default.override {
         targets = [ cargoTarget ];
+        extensions = llvmToolsExtensions;
       };
 
-  craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchainFun;
+  craneLibBase = (crane.mkLib pkgs).overrideToolchain rustToolchainFun;
+
+  # When llvm-tools are enabled (for coverage), override cargo-llvm-cov to use
+  # the version from nixpkgs-unstable, as the release channel may have it
+  # marked as broken or outdated.
+  pkgsUnstableLocal = import nixpkgs-unstable {
+    localSystem = args.localSystem;
+  };
+  craneLib =
+    if withLlvmTools then
+      craneLibBase.overrideScope (
+        _final: _prev: {
+          cargo-llvm-cov = pkgsUnstableLocal.cargo-llvm-cov;
+        }
+      )
+    else
+      craneLibBase;
 
   # mold is only supported on Linux builds, so falling back to lld for Darwin
   linker = if buildPlatform.isDarwin then "lld" else "mold";

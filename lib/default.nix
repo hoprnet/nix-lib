@@ -61,6 +61,7 @@ rec {
       buildersLib = import ./rust-builders.nix {
         inherit
           nixpkgs
+          nixpkgs-unstable
           rust-overlay
           crane
           localSystem
@@ -80,10 +81,12 @@ rec {
       isStatic ? false,
       useRustNightly ? false,
       rustToolchainFile ? null,
+      withLlvmTools ? false,
     }:
     import ./rust-builder.nix {
       inherit
         nixpkgs
+        nixpkgs-unstable
         rust-overlay
         crane
         localSystem
@@ -92,6 +95,7 @@ rec {
         isStatic
         useRustNightly
         rustToolchainFile
+        withLlvmTools
         ;
     };
 
@@ -170,6 +174,7 @@ rec {
       treefmtPrograms ? [ ],
       includePostgres ? false,
       postgresPackage ? null,
+      withLlvmTools ? false,
     }:
     import ./shells.nix {
       inherit
@@ -184,7 +189,9 @@ rec {
         treefmtPrograms
         includePostgres
         postgresPackage
+        withLlvmTools
         ;
+      pkgsUnstable = pkgsUnstable;
     };
 
   # Code Formatting

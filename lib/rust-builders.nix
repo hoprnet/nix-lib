@@ -9,6 +9,7 @@
 
 {
   nixpkgs,
+  nixpkgs-unstable ? nixpkgs,
   rust-overlay,
   crane,
   localSystem,
@@ -21,17 +22,21 @@ rec {
   #
   # Arguments:
   #   useRustNightly: Whether to use nightly Rust toolchain (default: false)
+  #   withLlvmTools: Whether to include llvm-tools for code coverage (default: false)
   mkLocalBuilder =
     {
       useRustNightly ? false,
+      withLlvmTools ? false,
     }:
     import ./rust-builder.nix {
       inherit
         nixpkgs
+        nixpkgs-unstable
         rust-overlay
         crane
         localSystem
         useRustNightly
+        withLlvmTools
         rustToolchainFile
         ;
     };
@@ -121,6 +126,12 @@ rec {
       isCross = !isNative;
     };
 
+  # Create a Rust builder for the local platform with llvm-tools
+  # This builder includes LLVM instrumentation tools required for code coverage
+  #
+  # Arguments: none
+  mkCoverageBuilder = { }: mkLocalBuilder { withLlvmTools = true; };
+
   # Helper function to create all platform builders at once
   # Returns an attribute set with all available builders
   #
@@ -133,6 +144,7 @@ rec {
   #   {
   #     local: Local platform builder
   #     localNightly: Local platform builder with nightly toolchain
+  #     localCoverage: Local platform builder with llvm-tools for code coverage
   #     x86_64-linux: x86_64 Linux static builder
   #     aarch64-linux: aarch64 Linux static builder
   #     x86_64-darwin: x86_64 macOS builder
@@ -143,6 +155,7 @@ rec {
     {
       local = mkLocalBuilder { };
       localNightly = mkLocalBuilder { useRustNightly = true; };
+      localCoverage = mkCoverageBuilder { };
       x86_64-linux = mkX86_64LinuxBuilder { };
       aarch64-linux = mkAarch64LinuxBuilder { };
       x86_64-darwin = mkX86_64DarwinBuilder { };
