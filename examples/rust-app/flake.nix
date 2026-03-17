@@ -199,6 +199,15 @@
               runClippy = true;
             };
 
+            # Compile benchmarks (without running)
+            bench-compile = builders.local.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev;
+              buildBench = true;
+            };
+
             # Code coverage (outputs LCOV report)
             coverage = builders.localCoverage.callPackage lib.mkRustPackage {
               src = sources.test;

@@ -162,12 +162,14 @@ package = builder.callPackage lib.mkRustPackage {
   depsSrc = sources.deps;
   cargoToml = ./Cargo.toml;
   rev = "v1.0.0";
-  CARGO_PROFILE = "release";           # Optional: release/dev/test
-  runTests = false;                    # Optional: run tests
+  CARGO_PROFILE = "release"; # Optional: release/dev/test
+  runTests = false;          # Optional: run tests
   cargoTestExtraArgs = "--workspace";  # Optional: args for cargo test
   prependPackageName = true;           # Optional: prepend -p ${pname} to cargo args
-  runClippy = false;                   # Optional: run clippy
-  buildDocs = false;                   # Optional: build documentation
+  runClippy = false;         # Optional: run clippy
+  buildDocs = false;         # Optional: build documentation
+  runBench = false;          # Optional: run benchmarks
+  buildBench = false;        # Optional: compile benchmarks (--no-run)
 };
 ```
 

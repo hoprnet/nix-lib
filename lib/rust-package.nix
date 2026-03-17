@@ -32,6 +32,7 @@
   runCoverage ? false, # Whether to run code coverage
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
+  buildBench ? false, # Whether to compile benchmarks without running (--no-run)
   cargoLlvmCovExtraArgs ? "--lcov --output-path $out", # Extra args for cargo-llvm-cov
   cargoLlvmCovCommand ? "test", # Subcommand for cargo-llvm-cov (test, run, etc.)
   src, # Source tree
@@ -74,6 +75,8 @@ let
       "dev"
     else if buildDocs then
       "dev"
+    else if runBench || buildBench then
+      "bench"
     else
       CARGO_PROFILE;
   pnameSuffix = if actualCargoProfile == "release" then "" else "-${actualCargoProfile}";
@@ -130,6 +133,8 @@ let
         cacert
       ];
 
+  opensslLibPath = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+
   sharedArgsBase = {
     inherit pname pnameSuffix version;
     CARGO_PROFILE = actualCargoProfile;
@@ -173,11 +178,17 @@ let
       // {
         inherit cargoTestExtraArgs;
         doCheck = true;
-        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else if runClippy then
       sharedArgsBase // { cargoClippyExtraArgs = "-- -Dwarnings"; }
+    else if runBench || buildBench then
+      sharedArgsBase
+      // {
+        LD_LIBRARY_PATH = opensslLibPath;
+        RUST_BACKTRACE = "full";
+      }
     else
       sharedArgsBase;
 
@@ -187,7 +198,7 @@ let
     cargoDocExtraArgs = "--workspace --no-deps";
     RUSTDOCFLAGS = "--enable-index-page -Z unstable-options -D warnings --document-private-items";
     CARGO_TARGET_DIR = "target/";
-    LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+    LD_LIBRARY_PATH = opensslLibPath;
     postBuild = ''
       ${pandoc}/bin/pandoc -f markdown+hard_line_breaks -t html README.md > readme.html
       mv target/''${CARGO_BUILD_TARGET}/doc target/
@@ -216,6 +227,7 @@ let
 
   mkBench = import ./cargo-bench.nix {
     mkCargoDerivation = craneLib.mkCargoDerivation;
+    noRun = buildBench;
   };
 
   builder =
@@ -227,7 +239,7 @@ let
       craneLib.cargoClippy
     else if buildDocs then
       craneLib.cargoDoc
-    else if runBench then
+    else if runBench || buildBench then
       mkBench
     else
       craneLib.buildPackage;

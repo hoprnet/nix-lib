@@ -144,6 +144,8 @@ let
         OPENSSL_NO_PKG_CONFIG = "1";
         "${envCase cargoTarget}_OPENSSL_LIB_DIR" = "${targetOpenssl.out}/lib";
         "${envCase cargoTarget}_OPENSSL_INCLUDE_DIR" = "${targetOpenssl.dev}/include";
+      }
+      // pkgsLocal.lib.optionalAttrs (buildHostTarget != cargoTarget) {
         "${envCase buildHostTarget}_OPENSSL_LIB_DIR" = "${buildHostOpenssl.out}/lib";
         "${envCase buildHostTarget}_OPENSSL_INCLUDE_DIR" = "${buildHostOpenssl.dev}/include";
       }
