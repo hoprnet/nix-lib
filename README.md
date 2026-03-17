@@ -166,6 +166,8 @@ package = builder.callPackage lib.mkRustPackage {
   runTests = false;          # Optional: run tests
   runClippy = false;         # Optional: run clippy
   buildDocs = false;         # Optional: build documentation
+  runBench = false;          # Optional: run benchmarks
+  buildBench = false;        # Optional: compile benchmarks (--no-run)
 };
 ```
 

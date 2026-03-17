@@ -169,6 +169,15 @@
               runClippy = true;
             };
 
+            # Compile benchmarks (without running)
+            bench-compile = builders.local.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev;
+              buildBench = true;
+            };
+
             # Formatting check
             formatting = config.treefmt.build.check self;
           };
