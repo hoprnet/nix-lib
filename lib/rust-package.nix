@@ -146,7 +146,13 @@ let
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
-    cargoExtraArgs = if prependPackageName then "-p ${pname} ${cargoExtraArgs}" else cargoExtraArgs;
+    cargoExtraArgs =
+      if runCoverage then
+        "--workspace ${cargoExtraArgs}"
+      else if prependPackageName then
+        "-p ${pname} ${cargoExtraArgs}"
+      else
+        cargoExtraArgs;
     strictDeps = true;
     # disable running tests automatically for now
     doCheck = false;
