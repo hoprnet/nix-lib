@@ -174,6 +174,7 @@ rec {
       treefmtPrograms ? [ ],
       includePostgres ? false,
       postgresPackage ? null,
+      withLlvmTools ? false,
     }:
     import ./shells.nix {
       inherit
@@ -188,7 +189,9 @@ rec {
         treefmtPrograms
         includePostgres
         postgresPackage
+        withLlvmTools
         ;
+      pkgsUnstable = pkgsUnstable;
     };
 
   # Code Formatting

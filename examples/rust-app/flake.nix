@@ -147,6 +147,7 @@
           # Development shell
           devShells.default = lib.mkDevShell {
             shellName = "Rust App Example";
+            withLlvmTools = true;
             extraPackages = with pkgs; [
               # Additional development tools
               cargo-edit
