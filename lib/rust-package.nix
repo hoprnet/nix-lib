@@ -10,6 +10,8 @@
   buildDocs ? false, # Whether to build documentation
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
+  cargoTestExtraArgs ? "--workspace", # Additional arguments for cargo test (before --)
+  prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   cargoToml, # Path to the Cargo.toml file
   craneLib, # Crane library for Rust builds
   depsSrc, # Source tree with only dependencies
@@ -142,7 +144,7 @@ let
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
-    cargoExtraArgs = "-p ${pname} ${cargoExtraArgs}";
+    cargoExtraArgs = if prependPackageName then "-p ${pname} ${cargoExtraArgs}" else cargoExtraArgs;
     strictDeps = true;
     # disable running tests automatically for now
     doCheck = false;
@@ -154,7 +156,7 @@ let
     if runTests then
       sharedArgsBase
       // {
-        cargoTestExtraArgs = "--workspace";
+        inherit cargoTestExtraArgs;
         doCheck = true;
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
         RUST_BACKTRACE = "full";
@@ -194,6 +196,10 @@ let
       // {
         pname = pnameDeps;
         src = depsSrc;
+        # Override test args for deps: run --lib tests (which are empty stubs)
+        # to ensure all test artifacts including build.rs outputs are generated,
+        # without requiring actual integration test files in the dep source.
+        cargoTestExtraArgs = "--lib";
       }
     );
   };

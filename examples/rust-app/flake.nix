@@ -93,6 +93,29 @@
             ];
           };
 
+          # Helper for building test derivations
+          mkTest =
+            {
+              builder ? builders.local,
+              cargoTestExtraArgs ? "--workspace",
+            }:
+            builder.callPackage lib.mkRustPackage {
+              src = sources.test;
+              depsSrc = sources.deps;
+              cargoToml = ./Cargo.toml;
+              inherit rev cargoTestExtraArgs;
+              runTests = true;
+            };
+
+          # Pre-built test derivations, reused in both packages and checks
+          unit-tests = mkTest { cargoTestExtraArgs = "--lib"; };
+          integration-tests = mkTest { cargoTestExtraArgs = "--test '*' -- --test-threads=1"; };
+          test-nightly = mkTest { builder = builders.localNightly; };
+          unit-tests-nightly = mkTest {
+            builder = builders.localNightly;
+            cargoTestExtraArgs = "--lib";
+          };
+
         in
         {
           # Packages that can be built with `nix build`
@@ -111,6 +134,14 @@
 
             # Docker image
             docker = dockerImage;
+
+            # Test derivations, built by Nix for caching
+            inherit
+              unit-tests
+              integration-tests
+              test-nightly
+              unit-tests-nightly
+              ;
           };
 
           # Development shell
@@ -151,14 +182,12 @@
 
           # Checks that run with `nix flake check`
           checks = {
-            # Run tests
-            tests = builders.local.callPackage lib.mkRustPackage {
-              src = sources.test;
-              depsSrc = sources.deps;
-              cargoToml = ./Cargo.toml;
-              inherit rev;
-              runTests = true;
-            };
+            inherit
+              unit-tests
+              integration-tests
+              test-nightly
+              unit-tests-nightly
+              ;
 
             # Run clippy linter
             clippy = builders.local.callPackage lib.mkRustPackage {
