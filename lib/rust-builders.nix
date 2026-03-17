@@ -81,6 +81,11 @@ rec {
   # Arguments: none
   mkX86_64DarwinBuilder =
     { }:
+    let
+      pkgsLocal = import nixpkgs { inherit localSystem; };
+      crossSystem = pkgsLocal.lib.systems.examples.x86_64-darwin;
+      isNative = pkgsLocal.lib.systems.equals (pkgsLocal.lib.systems.elaborate localSystem) crossSystem;
+    in
     import ./rust-builder.nix {
       inherit
         nixpkgs
@@ -88,9 +93,9 @@ rec {
         crane
         localSystem
         rustToolchainFile
+        crossSystem
         ;
-      crossSystem = (import nixpkgs { inherit localSystem; }).lib.systems.examples.x86_64-darwin;
-      isCross = true;
+      isCross = !isNative;
     };
 
   # Create a Rust builder for aarch64 macOS (Apple Silicon)
@@ -99,6 +104,11 @@ rec {
   # Arguments: none
   mkAarch64DarwinBuilder =
     { }:
+    let
+      pkgsLocal = import nixpkgs { inherit localSystem; };
+      crossSystem = pkgsLocal.lib.systems.examples.aarch64-darwin;
+      isNative = pkgsLocal.lib.systems.equals (pkgsLocal.lib.systems.elaborate localSystem) crossSystem;
+    in
     import ./rust-builder.nix {
       inherit
         nixpkgs
@@ -106,9 +116,9 @@ rec {
         crane
         localSystem
         rustToolchainFile
+        crossSystem
         ;
-      crossSystem = (import nixpkgs { inherit localSystem; }).lib.systems.examples.aarch64-darwin;
-      isCross = true;
+      isCross = !isNative;
     };
 
   # Helper function to create all platform builders at once
