@@ -29,6 +29,7 @@
   runClippy ? false, # Whether to run Clippy linter
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
+  buildBench ? false, # Whether to compile benchmarks without running (--no-run)
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
@@ -67,6 +68,8 @@ let
       "dev"
     else if buildDocs then
       "dev"
+    else if runBench || buildBench then
+      "bench"
     else
       CARGO_PROFILE;
   pnameSuffix = if actualCargoProfile == "release" then "" else "-${actualCargoProfile}";
@@ -158,6 +161,13 @@ let
       }
     else if runClippy then
       sharedArgsBase // { cargoClippyExtraArgs = "-- -Dwarnings"; }
+    else if runBench || buildBench then
+      sharedArgsBase
+      // {
+        doCheck = true;
+        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        RUST_BACKTRACE = "full";
+      }
     else
       sharedArgsBase;
 
@@ -194,6 +204,11 @@ let
     mkCargoDerivation = craneLib.mkCargoDerivation;
   };
 
+  mkBenchNoRun = import ./cargo-bench.nix {
+    mkCargoDerivation = craneLib.mkCargoDerivation;
+    noRun = true;
+  };
+
   builder =
     if runTests then
       craneLib.cargoTest
@@ -201,6 +216,8 @@ let
       craneLib.cargoClippy
     else if buildDocs then
       craneLib.cargoDoc
+    else if buildBench then
+      mkBenchNoRun
     else if runBench then
       mkBench
     else
