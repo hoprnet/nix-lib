@@ -105,7 +105,10 @@ let
   targetOpenssl = if isStatic then pkgs.pkgsStatic.openssl else pkgs.openssl;
   buildHostOpenssl = pkgsLocal.openssl;
   buildHostTarget =
-    if buildPlatform.config == "arm64-apple-darwin" then "aarch64-apple-darwin" else buildPlatform.config;
+    if buildPlatform.config == "arm64-apple-darwin" then
+      "aarch64-apple-darwin"
+    else
+      buildPlatform.config;
 
   buildEnvOpenssl =
     if isCross then
