@@ -128,6 +128,8 @@ let
         cacert
       ];
 
+  opensslLibPath = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+
   sharedArgsBase = {
     inherit pname pnameSuffix version;
     CARGO_PROFILE = actualCargoProfile;
@@ -158,7 +160,7 @@ let
       // {
         inherit cargoTestExtraArgs;
         doCheck = true;
-        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else if runClippy then
@@ -166,8 +168,7 @@ let
     else if runBench || buildBench then
       sharedArgsBase
       // {
-        doCheck = true;
-        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else
@@ -179,7 +180,7 @@ let
     cargoDocExtraArgs = "--workspace --no-deps";
     RUSTDOCFLAGS = "--enable-index-page -Z unstable-options -D warnings --document-private-items";
     CARGO_TARGET_DIR = "target/";
-    LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+    LD_LIBRARY_PATH = opensslLibPath;
     postBuild = ''
       ${pandoc}/bin/pandoc -f markdown+hard_line_breaks -t html README.md > readme.html
       mv target/''${CARGO_BUILD_TARGET}/doc target/
@@ -208,11 +209,7 @@ let
 
   mkBench = import ./cargo-bench.nix {
     mkCargoDerivation = craneLib.mkCargoDerivation;
-  };
-
-  mkBenchNoRun = import ./cargo-bench.nix {
-    mkCargoDerivation = craneLib.mkCargoDerivation;
-    noRun = true;
+    noRun = buildBench;
   };
 
   builder =
@@ -222,9 +219,7 @@ let
       craneLib.cargoClippy
     else if buildDocs then
       craneLib.cargoDoc
-    else if buildBench then
-      mkBenchNoRun
-    else if runBench then
+    else if runBench || buildBench then
       mkBench
     else
       craneLib.buildPackage;

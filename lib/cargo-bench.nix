@@ -19,7 +19,8 @@ let
     "cargoExtraArgs"
   ];
 
-  noRunFlag = if noRun then "--no-run " else "";
+  benchCmd =
+    if noRun then "cargo bench --no-run --workspace --locked" else "cargo bench --workspace --locked";
 in
 # Create the benchmark derivation by extending the base cargo derivation
 # with benchmark-specific configuration
@@ -29,7 +30,7 @@ mkCargoDerivation (
     inherit cargoArtifacts;
     pnameSuffix = "-bench"; # Distinguish benchmark builds from regular builds
 
-    buildPhaseCargoCommand = "cargo bench ${noRunFlag}--workspace --locked";
+    buildPhaseCargoCommand = benchCmd;
 
     nativeBuildInputs = (args.nativeBuildInputs or [ ]);
   }
