@@ -66,9 +66,9 @@ let
   crateInfo = craneLib.crateNameFromCargoToml { inherit cargoToml; };
   pname = crateInfo.pname;
   actualCargoProfile =
-    if runTests then
+    if runCoverage then
       "test"
-    else if runCoverage then
+    else if runTests then
       "test"
     else if runClippy then
       "dev"
@@ -161,18 +161,18 @@ let
   };
 
   sharedArgs =
-    if runTests then
+    if runCoverage then
+      sharedArgsBase
+      // {
+        inherit cargoLlvmCovExtraArgs cargoLlvmCovCommand;
+        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        RUST_BACKTRACE = "full";
+      }
+    else if runTests then
       sharedArgsBase
       // {
         inherit cargoTestExtraArgs;
         doCheck = true;
-        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
-        RUST_BACKTRACE = "full";
-      }
-    else if runCoverage then
-      sharedArgsBase
-      // {
-        inherit cargoLlvmCovExtraArgs cargoLlvmCovCommand;
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
         RUST_BACKTRACE = "full";
       }
