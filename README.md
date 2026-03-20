@@ -163,12 +163,45 @@ package = builder.callPackage lib.mkRustPackage {
   rev = "v1.0.0";
   CARGO_PROFILE = "release"; # Optional: release/dev/test
   runTests = false;          # Optional: run tests
+  cargoTestExtraArgs = "--workspace";  # Optional: args for cargo test
+  prependPackageName = true;           # Optional: prepend -p ${pname} to cargo args
   runClippy = false;         # Optional: run clippy
   buildDocs = false;         # Optional: build documentation
+  runBench = false;          # Optional: run benchmarks
+  buildBench = false;        # Optional: compile benchmarks (--no-run)
 };
 ```
 
-### Rust Libraries
+##### Splitting Unit and Integration Tests
+
+Tests can be split into separate Nix derivations for independent caching and
+execution. The examples below assume `sources.test` was created with
+`lib.mkTestSrc` (see [Source Filtering](#source-filtering)).
+
+```nix
+# Unit tests only (cargo test --lib)
+unit-tests = builder.callPackage lib.mkRustPackage {
+  src = sources.test;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+  runTests = true;
+  cargoTestExtraArgs = "--lib";
+};
+
+# Integration tests only (cargo test --test '*')
+integration-tests = builder.callPackage lib.mkRustPackage {
+  src = sources.test;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+  runTests = true;
+  cargoTestExtraArgs = "--test '*' -- --test-threads=1";
+};
+```
+
+These can be exposed as packages for `nix build` or as checks for
+`nix flake check`.
 
 #### `mkRustLibrary`
 
@@ -539,14 +572,24 @@ Quick example:
 # Build a Docker image — creates ./result symlink to the .tar.gz in the Nix store
 nix build .#docker-amd64
 
+# Load into the local Docker daemon for testing
+docker load < ./result
+
 # Push to a registry with skopeo (no Docker daemon required)
 skopeo copy \
   --dest-creds "$REGISTRY_USER:$REGISTRY_TOKEN" \
   docker-archive:./result \
   docker://ghcr.io/org/my-app:latest
 
-# Load into the local Docker daemon for testing
-docker load < ./result
+# Run unit tests (built by Nix, fully cached)
+nix build -L .#unit-tests
+
+# Run integration tests (built by Nix, fully cached)
+nix build -L .#integration-tests
+
+# Run unit tests with nightly toolchain
+nix build -L .#unit-tests-nightly
+
 ```
 
 ## Platform Support

@@ -10,6 +10,8 @@
   buildDocs ? false, # Whether to build documentation
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
+  cargoTestExtraArgs ? "--workspace", # Additional arguments for cargo test (before --)
+  prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   cargoToml, # Path to the Cargo.toml file
   craneLib, # Crane library for Rust builds
   depsSrc, # Source tree with only dependencies
@@ -27,8 +29,12 @@
   postInstall ? null, # Optional post-install script
   rev ? "unknown", # Git revision for version tracking
   runClippy ? false, # Whether to run Clippy linter
+  runCoverage ? false, # Whether to run code coverage
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
+  buildBench ? false, # Whether to compile benchmarks without running (--no-run)
+  cargoLlvmCovExtraArgs ? "--lcov --output-path $out", # Extra args for cargo-llvm-cov
+  cargoLlvmCovCommand ? "test", # Subcommand for cargo-llvm-cov (test, run, etc.)
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
@@ -61,12 +67,16 @@ let
   crateInfo = craneLib.crateNameFromCargoToml { inherit cargoToml; };
   pname = crateInfo.pname;
   actualCargoProfile =
-    if runTests then
+    if runCoverage then
+      "test"
+    else if runTests then
       "test"
     else if runClippy then
       "dev"
     else if buildDocs then
       "dev"
+    else if runBench || buildBench then
+      "bench"
     else
       CARGO_PROFILE;
   pnameSuffix = if actualCargoProfile == "release" then "" else "-${actualCargoProfile}";
@@ -123,6 +133,8 @@ let
         cacert
       ];
 
+  opensslLibPath = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+
   sharedArgsBase = {
     inherit pname pnameSuffix version;
     CARGO_PROFILE = actualCargoProfile;
@@ -139,7 +151,13 @@ let
     ++ extraNativeBuildInputs;
     buildInputs = buildInputs ++ stdenv.extraBuildInputs ++ darwinBuildInputs ++ extraBuildInputs;
 
-    cargoExtraArgs = "-p ${pname} ${cargoExtraArgs}";
+    cargoExtraArgs =
+      if runCoverage then
+        "--workspace ${cargoExtraArgs}"
+      else if prependPackageName then
+        "-p ${pname} ${cargoExtraArgs}"
+      else
+        cargoExtraArgs;
     strictDeps = true;
     # disable running tests automatically for now
     doCheck = false;
@@ -148,16 +166,29 @@ let
   };
 
   sharedArgs =
-    if runTests then
+    if runCoverage then
       sharedArgsBase
       // {
-        cargoTestExtraArgs = "--workspace";
-        doCheck = true;
+        inherit cargoLlvmCovExtraArgs cargoLlvmCovCommand;
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        RUST_BACKTRACE = "full";
+      }
+    else if runTests then
+      sharedArgsBase
+      // {
+        inherit cargoTestExtraArgs;
+        doCheck = true;
+        LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else if runClippy then
       sharedArgsBase // { cargoClippyExtraArgs = "-- -Dwarnings"; }
+    else if runBench || buildBench then
+      sharedArgsBase
+      // {
+        LD_LIBRARY_PATH = opensslLibPath;
+        RUST_BACKTRACE = "full";
+      }
     else
       sharedArgsBase;
 
@@ -165,9 +196,9 @@ let
     cargoArtifacts = null;
     cargoExtraArgs = ""; # overwrite the default to build all docs
     cargoDocExtraArgs = "--workspace --no-deps";
-    RUSTDOCFLAGS = "--enable-index-page -Z unstable-options";
+    RUSTDOCFLAGS = "--enable-index-page -Z unstable-options -D warnings --document-private-items";
     CARGO_TARGET_DIR = "target/";
-    LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+    LD_LIBRARY_PATH = opensslLibPath;
     postBuild = ''
       ${pandoc}/bin/pandoc -f markdown+hard_line_breaks -t html README.md > readme.html
       mv target/''${CARGO_BUILD_TARGET}/doc target/
@@ -184,6 +215,10 @@ let
       // {
         pname = pnameDeps;
         src = depsSrc;
+        # Override test args for deps: run --lib tests (which are empty stubs)
+        # to ensure all test artifacts including build.rs outputs are generated,
+        # without requiring actual integration test files in the dep source.
+        cargoTestExtraArgs = "--lib";
       }
     );
   };
@@ -192,16 +227,19 @@ let
 
   mkBench = import ./cargo-bench.nix {
     mkCargoDerivation = craneLib.mkCargoDerivation;
+    noRun = buildBench;
   };
 
   builder =
-    if runTests then
+    if runCoverage then
+      craneLib.cargoLlvmCov
+    else if runTests then
       craneLib.cargoTest
     else if runClippy then
       craneLib.cargoClippy
     else if buildDocs then
       craneLib.cargoDoc
-    else if runBench then
+    else if runBench || buildBench then
       mkBench
     else
       craneLib.buildPackage;

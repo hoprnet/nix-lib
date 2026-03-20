@@ -6,6 +6,7 @@
 
 {
   pkgs,
+  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-llvm-cov)
   crane,
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
@@ -16,6 +17,7 @@
   treefmtPrograms ? [ ], # Optional treefmt programs
   includePostgres ? false, # Whether to include PostgreSQL tools
   postgresPackage ? null, # Optional PostgreSQL package override
+  withLlvmTools ? false, # Whether to include llvm-tools for code coverage
 }:
 
 let
@@ -28,15 +30,19 @@ let
     else
       buildPlatform.config;
 
+  llvmToolsExtensions = if withLlvmTools then [ "llvm-tools-preview" ] else [ ];
+
   # Use provided Rust toolchain or default from rust-toolchain.toml or stable
   defaultRustToolchain =
     if rustToolchainFile != null then
       (pkgs.rust-bin.fromRustupToolchainFile rustToolchainFile).override {
         targets = [ cargoTarget ];
+        extensions = llvmToolsExtensions;
       }
     else
       (pkgs.rust-bin.stable.latest.default).override {
         targets = [ cargoTarget ];
+        extensions = llvmToolsExtensions;
       };
 
   finalRustToolchain = if rustToolchain != null then rustToolchain else defaultRustToolchain;
@@ -86,6 +92,9 @@ let
     cargo-audit # Rust security auditing
   ];
 
+  # Coverage packages (optional)
+  coveragePackages = if withLlvmTools then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
+
   # CI/CD packages
   ciPackages = with pkgs; [
     lcov # Code coverage
@@ -98,7 +107,13 @@ let
 
   # All packages combined
   allPackages =
-    corePackages ++ ciPackages ++ postgresPackages ++ treefmtPackages ++ linuxPackages ++ extraPackages;
+    corePackages
+    ++ ciPackages
+    ++ coveragePackages
+    ++ postgresPackages
+    ++ treefmtPackages
+    ++ linuxPackages
+    ++ extraPackages;
 
   # Shell hook with Rust version display
   defaultShellHook = ''
