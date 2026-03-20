@@ -149,6 +149,15 @@ let
         "${envCase buildHostTarget}_OPENSSL_LIB_DIR" = "${buildHostOpenssl.out}/lib";
         "${envCase buildHostTarget}_OPENSSL_INCLUDE_DIR" = "${buildHostOpenssl.dev}/include";
       }
+      // (
+        if buildHostTarget != cargoTarget then
+          {
+            "${envCase buildHostTarget}_OPENSSL_LIB_DIR" = "${buildHostOpenssl.out}/lib";
+            "${envCase buildHostTarget}_OPENSSL_INCLUDE_DIR" = "${buildHostOpenssl.dev}/include";
+          }
+        else
+          { }
+      )
     else
       { };
 

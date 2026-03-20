@@ -119,8 +119,6 @@ The library is organized as a flake that exposes functions through
 
 #### Utility Apps (`apps.nix`)
 
-- **mkDockerUploadApp**: Builds and uploads Docker images to registries (uses
-  skopeo with Google Cloud authentication)
 - **mkCheckApp**: Runs nix flake checks
 - **mkAuditApp**: Runs cargo-audit for security scanning
 - **mkFindPortApp**: Finds available ports for CI testing

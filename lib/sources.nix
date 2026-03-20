@@ -25,7 +25,7 @@ rec {
       fileset = fs.unions (
         [
           # Cargo configuration
-          (root + "/.cargo/config.toml")
+          (fs.maybeMissing (root + "/.cargo/config.toml"))
           (root + "/Cargo.lock")
           # Include all Cargo.toml files for workspace resolution
           (fs.fileFilter (file: file.name == "Cargo.toml") root)
@@ -59,7 +59,7 @@ rec {
       fileset = fs.unions (
         [
           # Cargo configuration
-          (root + "/.cargo/config.toml")
+          (fs.maybeMissing (root + "/.cargo/config.toml"))
           (root + "/Cargo.lock")
           (root + "/README.md")
 
@@ -100,7 +100,7 @@ rec {
       fileset = fs.unions (
         [
           # Cargo configuration
-          (root + "/.cargo/config.toml")
+          (fs.maybeMissing (root + "/.cargo/config.toml"))
           (root + "/Cargo.lock")
           (root + "/README.md")
 
