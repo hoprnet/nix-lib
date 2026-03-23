@@ -8,9 +8,8 @@ cross-compilation, Docker images, and comprehensive development environments.
 - **Cross-compilation**: Build Rust binaries for multiple platforms (Linux
   x86_64/ARM64, macOS x86_64/ARM64)
 - **Static linking**: Create fully static binaries with musl on Linux
+- **Library crates**: Build Rust library crates and install `.rlib`/`.a` artifacts
 - **Docker images**: Build optimized, layered container images
-- **Multi-architecture support**: Create OCI manifest lists for automatic
-  platform selection
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration via flake module
 - **Man page generation**: Automatic manual page creation from binaries
@@ -204,6 +203,38 @@ integration-tests = builder.callPackage lib.mkRustPackage {
 These can be exposed as packages for `nix build` or as checks for
 `nix flake check`.
 
+#### `mkRustLibrary`
+
+Build a Rust library crate (a crate with `lib.rs` and no `main.rs`). The
+compiled `.rlib` and `.a` artifacts are installed to `$out/lib/`. Call via `builder.callPackage`.
+
+```nix
+myLib = builder.callPackage lib.mkRustLibrary {
+  src = sources.main;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+  CARGO_PROFILE = "release"; # Optional: release/dev/test (default: release)
+  runTests = false;          # Optional: run tests
+  runClippy = false;         # Optional: run clippy
+};
+
+# Artifacts are available at:
+# ${myLib}/lib/libmy_lib-<hash>.rlib
+# ${myLib}/lib/libmy_lib.a          (if a C-compatible static lib was produced)
+```
+
+Cross-compilation works exactly as with `mkRustPackage`:
+
+```nix
+myLibAmd64 = builders."x86_64-linux".callPackage lib.mkRustLibrary {
+  src = sources.main;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+};
+```
+
 ### Docker Images
 
 #### `mkDockerImage`
@@ -219,48 +250,6 @@ image = lib.mkDockerImage {
   env = [ "RUST_LOG=info" ];
   extraContents = [ pkgs.curl ];
 };
-```
-
-### Multi-Architecture Support
-
-#### `mkMultiArchManifest`
-
-Create OCI manifest list combining multiple platform-specific images.
-
-```nix
-# First, build images for different architectures
-imageAmd64 = lib.mkDockerImage {
-  name = "my-app";
-  tag = "latest";
-  Entrypoint = [ "${myPackageAmd64}/bin/my-app" ];
-  pkgsLinux = nixpkgs.legacyPackages.x86_64-linux;
-};
-
-imageArm64 = lib.mkDockerImage {
-  name = "my-app";
-  tag = "latest";
-  Entrypoint = [ "${myPackageArm64}/bin/my-app" ];
-  pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
-};
-
-# Create multi-arch manifest
-manifest = lib.mkMultiArchManifest {
-  name = "my-app";
-  tag = "latest";
-  images = [
-    { image = imageAmd64; platform = "linux/amd64"; }
-    { image = imageArm64; platform = "linux/arm64"; }
-  ];
-};
-
-# Build the manifest
-# nix build .#manifest
-# Results in:
-#   result/images/linux-amd64.tar.gz
-#   result/images/linux-arm64.tar.gz
-#   result/manifest.json
-#   result/metadata.json
-#   result/push-manifest.sh
 ```
 
 ### Development Shells
@@ -333,34 +322,6 @@ treefmt = lib.mkTreefmtConfig {
 ```
 
 ### Utility Applications
-
-#### `mkDockerUploadApp`
-
-Create an app for building and uploading Docker images.
-
-```nix
-apps.upload-image = lib.mkDockerUploadApp myDockerImage;
-
-# Usage:
-# GOOGLE_ACCESS_TOKEN=... IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-image
-```
-
-#### `mkMultiArchUploadApp`
-
-Create an app for uploading multi-architecture manifests with all platform
-images.
-
-```nix
-apps.upload-manifest = lib.mkMultiArchUploadApp myMultiArchManifest;
-
-# Usage:
-# GOOGLE_ACCESS_TOKEN=... IMAGE_TARGET=gcr.io/project/image:tag nix run .#upload-manifest
-#
-# This will:
-# 1. Upload each platform-specific image (e.g., image:tag-linux-amd64, image:tag-linux-arm64)
-# 2. Create and push a manifest list at IMAGE_TARGET that references all platforms
-# 3. Enable automatic platform selection when users pull the image
-```
 
 #### `mkCheckApp`
 
@@ -457,12 +418,11 @@ Quick example:
         shellName = "My App Development";
       };
 
-      apps.upload = lib.mkDockerUploadApp myImage;
     };
 }
 ```
 
-### Complete Example with Security & Multi-Arch
+### Complete Example with Security
 
 ```nix
 {
@@ -522,16 +482,6 @@ Quick example:
           pkgsLinux = nixpkgs.legacyPackages.aarch64-linux;
         };
 
-        # Multi-architecture manifest
-        multiArchManifest = lib.mkMultiArchManifest {
-          name = "my-app";
-          tag = "latest";
-          images = [
-            { image = imageAmd64; platform = "linux/amd64"; }
-            { image = imageArm64; platform = "linux/arm64"; }
-          ];
-        };
-
         in
         {
         packages = {
@@ -540,16 +490,9 @@ Quick example:
           arm64 = appArm64;
           docker-amd64 = imageAmd64;
           docker-arm64 = imageArm64;
-          docker-manifest = multiArchManifest;
         };
 
         apps = {
-          # Upload single architecture image
-          upload-amd64 = lib.mkDockerUploadApp imageAmd64;
-
-          # Upload multi-arch manifest (recommended)
-          upload-manifest = lib.mkMultiArchUploadApp multiArchManifest;
-
           # Security audit
           audit = lib.mkAuditApp {
             rustToolchainFile = ./rust-toolchain.toml;
@@ -565,9 +508,79 @@ Quick example:
 }
 ```
 
+### Library Crate Example
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/release-25.05";
+    nix-lib.url = "github:hoprnet/nix-lib";
+  };
+
+  outputs = { self, nixpkgs, nix-lib, ... }:
+    let
+      system = "x86_64-linux";
+      lib = nix-lib.lib.${system};
+
+      builders = lib.mkRustBuilders {
+        rustToolchainFile = ./rust-toolchain.toml;
+      };
+
+      sources = {
+        main = lib.mkSrc { root = ./.; fs = nixpkgs.lib.fileset; };
+        deps = lib.mkDepsSrc { root = ./.; fs = nixpkgs.lib.fileset; };
+      };
+
+      # Build the library for the local platform
+      myLib = builders.local.callPackage lib.mkRustLibrary {
+        src = sources.main;
+        depsSrc = sources.deps;
+        cargoToml = ./Cargo.toml;
+        rev = "v1.0.0";
+      };
+
+      # Cross-compile the same library for x86_64 Linux (static)
+      myLibAmd64 = builders."x86_64-linux".callPackage lib.mkRustLibrary {
+        src = sources.main;
+        depsSrc = sources.deps;
+        cargoToml = ./Cargo.toml;
+        rev = "v1.0.0";
+      };
+
+    in
+    {
+      packages = {
+        default = myLib;
+        amd64 = myLibAmd64;
+      };
+
+      # Run clippy on the library
+      checks.clippy = builders.local.callPackage lib.mkRustLibrary {
+        src = sources.main;
+        depsSrc = sources.deps;
+        cargoToml = ./Cargo.toml;
+        rev = "v1.0.0";
+        runClippy = true;
+      };
+    };
+}
+```
+
 ### CI/CD Integration Example
 
 ```bash
+# Build a Docker image — creates ./result symlink to the .tar.gz in the Nix store
+nix build .#docker-amd64
+
+# Load into the local Docker daemon for testing
+docker load < ./result
+
+# Push to a registry with skopeo (no Docker daemon required)
+skopeo copy \
+  --dest-creds "$REGISTRY_USER:$REGISTRY_TOKEN" \
+  docker-archive:./result \
+  docker://ghcr.io/org/my-app:latest
+
 # Run unit tests (built by Nix, fully cached)
 nix build -L .#unit-tests
 
@@ -577,13 +590,6 @@ nix build -L .#integration-tests
 # Run unit tests with nightly toolchain
 nix build -L .#unit-tests-nightly
 
-# Build everything
-nix build .#docker-manifest
-
-# Upload multi-arch image to registry
-GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
-IMAGE_TARGET="gcr.io/my-project/my-app:v1.0.0" \
-nix run .#upload-manifest
 ```
 
 ## Platform Support

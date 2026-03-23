@@ -174,9 +174,6 @@
               program = "${rust-app}/bin/rust-app";
             };
 
-            # Upload Docker image to registry
-            upload-docker = lib.mkDockerUploadApp dockerImage;
-
             # Run security audit
             audit = lib.mkAuditApp { };
           };

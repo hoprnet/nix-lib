@@ -101,10 +101,18 @@ rec {
 
   # Rust Package Builder
   # -------------------
-  # Low-level function for building Rust packages
+  # Low-level function for building Rust packages (binary crates)
   # Most users should use builder.callPackage instead
 
   mkRustPackage = import ./rust-package.nix;
+
+  # Rust Library Builder
+  # --------------------
+  # Low-level function for building Rust library crates (lib.rs, no main.rs)
+  # Installs .rlib and .a artifacts to $out/lib/
+  # Most users should use builder.callPackage instead
+
+  mkRustLibrary = import ./rust-library.nix;
 
   # Docker Images
   # ------------
@@ -121,6 +129,7 @@ rec {
       basePackages ? null,
       tag ? "latest",
       pkgsLinux ? null, # Optional Linux pkgs for building on macOS
+      pathsToLink ? [ "/bin" ],
     }:
     let
       # Use provided Linux packages or create new ones
@@ -145,18 +154,9 @@ rec {
         extraContents
         basePackages
         tag
+        pathsToLink
         ;
     };
-
-  # Multi-Architecture Support
-  # -------------------------
-  # Functions for creating multi-arch Docker manifests
-
-  # Import multi-arch utilities
-  multiArch = import ./multi-arch.nix { inherit pkgs; };
-
-  # Re-export multi-arch utilities at top level for convenience
-  inherit (multiArch) mkMultiArchManifest;
 
   # Development Shells
   # -----------------
@@ -258,10 +258,6 @@ rec {
 
   # Re-export app utilities at top level for convenience
   inherit (apps)
-    mkDockerUploadScript
-    mkDockerUploadApp
-    mkMultiArchUploadScript
-    mkMultiArchUploadApp
     mkCheckApp
     mkAuditApp
     mkFindPortApp
