@@ -64,6 +64,7 @@ let
 
     # Markdown and JSON formatting with Prettier
     programs.prettier.enable = true;
+    programs.prettier.package = pkgs.prettier;
     settings.formatter.prettier.includes = [
       "*.md"
       "*.json"
