@@ -11,6 +11,7 @@
   pkgs, # Nixpkgs package set
   globalExcludes ? [ ], # Additional global exclusions
   extraFormatters ? { }, # Additional formatter configurations
+  projectRootFile ? "flake.nix", # File to identify project root
 }:
 
 let
@@ -43,7 +44,7 @@ let
   # Base treefmt configuration
   baseConfig = {
     # Project root detection file
-    inherit (config.flake-root) projectRootFile;
+    inherit projectRootFile;
 
     # Global exclusions - files and directories to never format
     settings.global.excludes = allExcludes;
@@ -63,6 +64,7 @@ let
 
     # Markdown and JSON formatting with Prettier
     programs.prettier.enable = true;
+    programs.prettier.package = pkgs.prettier;
     settings.formatter.prettier.includes = [
       "*.md"
       "*.json"
