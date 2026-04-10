@@ -204,6 +204,7 @@ rec {
       config,
       globalExcludes ? [ ],
       extraFormatters ? { },
+      projectRootFile ? "flake.nix",
     }:
     import ./treefmt.nix {
       inherit
@@ -211,6 +212,7 @@ rec {
         pkgs
         globalExcludes
         extraFormatters
+        projectRootFile
         ;
     };
 
