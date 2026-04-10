@@ -64,6 +64,13 @@
             };
           };
         };
+
+        projectRootFile = lib.mkOption {
+          type = lib.types.str;
+          default = "flake.nix";
+          description = "File used to identify the project root for treefmt";
+          example = "Cargo.toml";
+        };
       };
 
       # Apply configuration
@@ -73,6 +80,7 @@
           inherit config;
           globalExcludes = config.nix-lib.treefmt.globalExcludes;
           extraFormatters = config.nix-lib.treefmt.extraFormatters;
+          projectRootFile = config.nix-lib.treefmt.projectRootFile;
         };
 
         # Export the formatter for nix fmt
