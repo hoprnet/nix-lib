@@ -215,10 +215,10 @@ let
       // {
         pname = pnameDeps;
         src = depsSrc;
-        # Override test args for deps: run --lib tests (which are empty stubs)
-        # to ensure all test artifacts including build.rs outputs are generated,
-        # without requiring actual integration test files in the dep source.
-        cargoTestExtraArgs = "--lib";
+        # Use --no-run to pre-compile test artifacts (including dev-dependencies
+        # and build.rs outputs) without running tests. --lib breaks binary-only
+        # crates that have no library target.
+        cargoTestExtraArgs = "--no-run";
       }
     );
   };
