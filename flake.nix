@@ -105,7 +105,7 @@
             # Development shell for working on the library itself
             devShells.default = pkgs.mkShell {
               buildInputs = with pkgs; [
-                nixfmt-rfc-style
+                nixfmt
                 nil # Nix language server
                 deno # For markdown formatting
                 just
@@ -130,7 +130,7 @@
               programs = {
                 nixfmt = {
                   enable = true;
-                  package = pkgs.nixfmt-rfc-style;
+                  package = pkgs.nixfmt;
                 };
                 deno = {
                   enable = true;
