@@ -6,7 +6,7 @@
 
 {
   pkgs,
-  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-llvm-cov)
+  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-llvm-cov)
   crane,
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
@@ -88,8 +88,8 @@ let
     time
     which
 
-    # Rust tooling
-    cargo-audit # Rust security auditing
+    # Rust tooling (cargo-audit from unstable for latest advisory support)
+    pkgsUnstable.cargo-audit
   ];
 
   # Coverage packages (optional)
