@@ -92,14 +92,7 @@
           }:
           let
             lib = libForSystem system;
-            ciToolNames = [
-              "lcov"
-              "skopeo"
-              "dive"
-              "go-containerregistry"
-              "shellcheck"
-              "shfmt"
-            ];
+            ciToolNames = lib.ciTools.names;
             devShellWithCi = lib.mkDevShell { };
             devShellWithoutCi = lib.mkDevShell {
               includeCiPackages = false;

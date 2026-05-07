@@ -36,6 +36,8 @@ let
   lib = pkgs.lib;
 in
 rec {
+  ciTools = import ./ci-tools.nix;
+
   # Source Filtering
   # ---------------
   # Functions for creating filtered source trees for different build contexts
@@ -181,6 +183,7 @@ rec {
       inherit
         pkgs
         crane
+        ciTools
         rustToolchain
         rustToolchainFile
         extraPackages
