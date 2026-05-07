@@ -10,7 +10,7 @@
   crane,
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
-  extraPackages ? [ ], # Additional packages to include
+  extraPackages ? [ ], # Additional packages (take PATH precedence over defaults)
   shellName ? "Development", # Name shown in shell prompt
   shellHook ? "", # Additional shell hook commands
   treefmtWrapper ? null, # Optional treefmt wrapper
@@ -107,13 +107,13 @@ let
 
   # All packages combined
   allPackages =
-    corePackages
+    extraPackages
+    ++ corePackages
     ++ ciPackages
     ++ coveragePackages
     ++ postgresPackages
     ++ treefmtPackages
-    ++ linuxPackages
-    ++ extraPackages;
+    ++ linuxPackages;
 
   # Shell hook with Rust version display
   defaultShellHook = ''
