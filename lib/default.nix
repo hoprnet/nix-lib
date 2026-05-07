@@ -175,6 +175,7 @@ rec {
       includePostgres ? false,
       postgresPackage ? null,
       withLlvmTools ? false,
+      includeCiPackages ? true,
     }:
     import ./shells.nix {
       inherit
@@ -190,6 +191,7 @@ rec {
         includePostgres
         postgresPackage
         withLlvmTools
+        includeCiPackages
         ;
       pkgsUnstable = pkgsUnstable;
     };

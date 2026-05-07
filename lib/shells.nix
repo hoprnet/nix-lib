@@ -18,6 +18,7 @@
   includePostgres ? false, # Whether to include PostgreSQL tools
   postgresPackage ? null, # Optional PostgreSQL package override
   withLlvmTools ? false, # Whether to include llvm-tools for code coverage
+  includeCiPackages ? true, # Whether to include CI/CD tooling
 }:
 
 let
@@ -96,14 +97,19 @@ let
   coveragePackages = if withLlvmTools then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
 
   # CI/CD packages
-  ciPackages = with pkgs; [
-    lcov # Code coverage
-    skopeo # Container image tools
-    dive # Docker layer analysis
-    go-containerregistry # OCI image manipulation tool (includes crane and gcrane)
-    shellcheck # Shell script linting
-    shfmt # Shell script formatting
-  ];
+  ciPackages =
+    if includeCiPackages then
+      with pkgs;
+      [
+        lcov # Code coverage
+        skopeo # Container image tools
+        dive # Docker layer analysis
+        go-containerregistry # OCI image manipulation tool (includes crane and gcrane)
+        shellcheck # Shell script linting
+        shfmt # Shell script formatting
+      ]
+    else
+      [ ];
 
   # All packages combined
   allPackages =

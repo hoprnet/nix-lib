@@ -266,11 +266,16 @@ devShell = lib.mkDevShell {
   shellName = "My Project";
   extraPackages = [ pkgs.postgresql ];
   includePostgres = true;
+  includeCiPackages = false; # Optional: exclude CI-only tools for lean local shells
   shellHook = ''
     echo "Welcome to my project!"
   '';
 };
 ```
+
+`mkDevShell` includes CI/CD tools by default for backward compatibility. Set
+`includeCiPackages = false;` to exclude CI packages from local development
+shells.
 
 ### Code Formatting
 

@@ -92,6 +92,25 @@
           }:
           let
             lib = libForSystem system;
+            ciToolNames = [
+              "lcov"
+              "skopeo"
+              "dive"
+              "go-containerregistry"
+              "shellcheck"
+              "shfmt"
+            ];
+            devShellWithCi = lib.mkDevShell { };
+            devShellWithoutCi = lib.mkDevShell {
+              includeCiPackages = false;
+            };
+            hasToolInShell =
+              shell: toolName:
+              builtins.any (path: pkgs.lib.hasInfix "-${toolName}-" path) (
+                shell.inputDerivation.nativeBuildInputs or [ ]
+              );
+            allCiToolsInShell = shell: builtins.all (toolName: hasToolInShell shell toolName) ciToolNames;
+            noCiToolsInShell = shell: builtins.all (toolName: !(hasToolInShell shell toolName)) ciToolNames;
           in
           {
             # Import nixpkgs with overlays
@@ -186,6 +205,22 @@
             checks = {
               # Formatting check
               format = config.treefmt.build.check self;
+
+              # Default mkDevShell should include CI tooling (backward compatibility)
+              devShellCiPackagesDefault =
+                assert pkgs.lib.assertMsg (allCiToolsInShell devShellWithCi)
+                  "mkDevShell default is expected to include CI packages";
+                pkgs.runCommand "check-dev-shell-ci-packages-default" { } ''
+                  touch "$out"
+                '';
+
+              # mkDevShell with includeCiPackages = false should exclude CI tooling
+              devShellCiPackagesDisabled =
+                assert pkgs.lib.assertMsg (noCiToolsInShell devShellWithoutCi)
+                  "mkDevShell with includeCiPackages = false is expected to exclude CI packages";
+                pkgs.runCommand "check-dev-shell-ci-packages-disabled" { } ''
+                  touch "$out"
+                '';
             };
           };
 
