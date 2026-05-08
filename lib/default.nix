@@ -36,6 +36,8 @@ let
   lib = pkgs.lib;
 in
 rec {
+  ciTools = import ./ci-tools.nix;
+
   # Source Filtering
   # ---------------
   # Functions for creating filtered source trees for different build contexts
@@ -175,11 +177,13 @@ rec {
       includePostgres ? false,
       postgresPackage ? null,
       withLlvmTools ? false,
+      includeCiPackages ? true,
     }:
     import ./shells.nix {
       inherit
         pkgs
         crane
+        ciTools
         rustToolchain
         rustToolchainFile
         extraPackages
@@ -190,6 +194,7 @@ rec {
         includePostgres
         postgresPackage
         withLlvmTools
+        includeCiPackages
         ;
       pkgsUnstable = pkgsUnstable;
     };

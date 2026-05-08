@@ -8,6 +8,7 @@
   pkgs,
   pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-llvm-cov)
   crane,
+  ciTools,
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
   extraPackages ? [ ], # Additional packages (take PATH precedence over defaults)
@@ -18,6 +19,7 @@
   includePostgres ? false, # Whether to include PostgreSQL tools
   postgresPackage ? null, # Optional PostgreSQL package override
   withLlvmTools ? false, # Whether to include llvm-tools for code coverage
+  includeCiPackages ? true, # Whether to include CI/CD tooling
 }:
 
 let
@@ -96,14 +98,7 @@ let
   coveragePackages = if withLlvmTools then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
 
   # CI/CD packages
-  ciPackages = with pkgs; [
-    lcov # Code coverage
-    skopeo # Container image tools
-    dive # Docker layer analysis
-    go-containerregistry # OCI image manipulation tool (includes crane and gcrane)
-    shellcheck # Shell script linting
-    shfmt # Shell script formatting
-  ];
+  ciPackages = if includeCiPackages then ciTools.mkPackages pkgs else [ ];
 
   # All packages combined
   allPackages =
