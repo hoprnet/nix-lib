@@ -1,4 +1,4 @@
-{
+rec {
   names = [
     "lcov"
     "skopeo"
@@ -8,13 +8,5 @@
     "shfmt"
   ];
 
-  mkPackages =
-    pkgs: with pkgs; [
-      lcov # Code coverage
-      skopeo # Container image tools
-      dive # Docker layer analysis
-      go-containerregistry # OCI image manipulation tool (includes crane and gcrane)
-      shellcheck # Shell script linting
-      shfmt # Shell script formatting
-    ];
+  mkPackages = pkgs: map (name: builtins.getAttr name pkgs) names;
 }
