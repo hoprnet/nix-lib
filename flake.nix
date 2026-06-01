@@ -114,12 +114,14 @@
               ];
             };
 
-            # Skopeo wrapper that ensures /etc/containers/registries.conf is in v2 format.
+            # Skopeo wrapper that ensures ~/.config/containers/registries.conf is in v2 format.
             # Ubuntu 22.04/24.04 runners ship a v1 file that newer skopeo rejects.
             # Usage in CI: nix shell github:hoprnet/nix-lib#skopeo -c bash
             packages.skopeo = pkgs.writeShellScriptBin "skopeo" ''
               mkdir -p "''${HOME}/.config/containers"
-              printf 'unqualified-search-registries = ["docker.io"]\n' > "''${HOME}/.config/containers/registries.conf"
+              if [ ! -e "''${HOME}/.config/containers/registries.conf" ]; then
+                printf 'unqualified-search-registries = ["docker.io"]\n' > "''${HOME}/.config/containers/registries.conf"
+              fi
               exec ${pkgs.skopeo}/bin/skopeo "$@"
             '';
 
