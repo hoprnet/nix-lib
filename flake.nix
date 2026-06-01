@@ -102,6 +102,15 @@
               ];
             };
 
+            # Skopeo wrapper that ensures /etc/containers/registries.conf is in v2 format.
+            # Ubuntu 22.04/24.04 runners ship a v1 file that newer skopeo rejects.
+            # Usage in CI: nix shell github:hoprnet/nix-lib#skopeo -c bash
+            packages.skopeo = pkgs.writeShellScriptBin "skopeo" ''
+              mkdir -p "''${HOME}/.config/containers"
+              printf 'unqualified-search-registries = []\n' > "''${HOME}/.config/containers/registries.conf"
+              exec ${pkgs.skopeo}/bin/skopeo "$@"
+            '';
+
             # Development shell for working on the library itself
             devShells.default = pkgs.mkShell {
               buildInputs = with pkgs; [

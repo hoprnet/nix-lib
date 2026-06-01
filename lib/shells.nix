@@ -121,6 +121,8 @@ let
     echo "   Rust version: $(rustc --version)"
     echo "   Cargo version: $(cargo --version)"
     echo ""
+    mkdir -p "''${HOME}/.config/containers"
+    printf 'unqualified-search-registries = []\n' > "''${HOME}/.config/containers/registries.conf"
   '';
 
   finalShellHook = defaultShellHook + shellHook;
