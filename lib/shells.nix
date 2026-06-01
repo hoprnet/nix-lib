@@ -6,11 +6,12 @@
 
 {
   pkgs,
-  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-llvm-cov)
+  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-llvm-cov)
   crane,
+  ciTools,
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
-  extraPackages ? [ ], # Additional packages to include
+  extraPackages ? [ ], # Additional packages (take PATH precedence over defaults)
   shellName ? "Development", # Name shown in shell prompt
   shellHook ? "", # Additional shell hook commands
   treefmtWrapper ? null, # Optional treefmt wrapper
@@ -18,6 +19,7 @@
   includePostgres ? false, # Whether to include PostgreSQL tools
   postgresPackage ? null, # Optional PostgreSQL package override
   withLlvmTools ? false, # Whether to include llvm-tools for code coverage
+  includeCiPackages ? true, # Whether to include CI/CD tooling
 }:
 
 let
@@ -88,32 +90,25 @@ let
     time
     which
 
-    # Rust tooling
-    cargo-audit # Rust security auditing
+    # Rust tooling (cargo-audit from unstable for latest advisory support)
+    pkgsUnstable.cargo-audit
   ];
 
   # Coverage packages (optional)
   coveragePackages = if withLlvmTools then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
 
   # CI/CD packages
-  ciPackages = with pkgs; [
-    lcov # Code coverage
-    skopeo # Container image tools
-    dive # Docker layer analysis
-    go-containerregistry # OCI image manipulation tool (includes crane and gcrane)
-    shellcheck # Shell script linting
-    shfmt # Shell script formatting
-  ];
+  ciPackages = if includeCiPackages then ciTools.mkPackages pkgs else [ ];
 
   # All packages combined
   allPackages =
-    corePackages
+    extraPackages
+    ++ corePackages
     ++ ciPackages
     ++ coveragePackages
     ++ postgresPackages
     ++ treefmtPackages
-    ++ linuxPackages
-    ++ extraPackages;
+    ++ linuxPackages;
 
   # Shell hook with Rust version display
   defaultShellHook = ''

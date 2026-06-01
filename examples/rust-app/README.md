@@ -65,7 +65,6 @@ nix fmt
 ```bash
 # Build Docker image
 nix build .#docker
-
 ```
 
 ### Quality Checks
