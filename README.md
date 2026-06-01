@@ -8,7 +8,8 @@ cross-compilation, Docker images, and comprehensive development environments.
 - **Cross-compilation**: Build Rust binaries for multiple platforms (Linux
   x86_64/ARM64, macOS x86_64/ARM64)
 - **Static linking**: Create fully static binaries with musl on Linux
-- **Library crates**: Build Rust library crates and install `.rlib`/`.a` artifacts
+- **Library crates**: Build Rust library crates and install `.rlib`/`.a`
+  artifacts
 - **Docker images**: Build optimized, layered container images
 - **Development shells**: Rich development environments with all necessary tools
 - **Code formatting**: Integrated treefmt configuration via flake module
@@ -206,7 +207,8 @@ These can be exposed as packages for `nix build` or as checks for
 #### `mkRustLibrary`
 
 Build a Rust library crate (a crate with `lib.rs` and no `main.rs`). The
-compiled `.rlib` and `.a` artifacts are installed to `$out/lib/`. Call via `builder.callPackage`.
+compiled `.rlib` and `.a` artifacts are installed to `$out/lib/`. Call via
+`builder.callPackage`.
 
 ```nix
 myLib = builder.callPackage lib.mkRustLibrary {
@@ -264,11 +266,16 @@ devShell = lib.mkDevShell {
   shellName = "My Project";
   extraPackages = [ pkgs.postgresql ];
   includePostgres = true;
+  includeCiPackages = false; # Optional: exclude CI-only tools for lean local shells
   shellHook = ''
     echo "Welcome to my project!"
   '';
 };
 ```
+
+`mkDevShell` includes CI/CD tools by default for backward compatibility. Set
+`includeCiPackages = false;` to exclude CI packages from local development
+shells.
 
 ### Code Formatting
 
@@ -299,7 +306,7 @@ Import `nix-lib.flakeModules.default` to get automatic treefmt configuration:
 The module automatically configures formatters for:
 
 - Rust (rustfmt with nightly)
-- Nix (nixfmt-rfc-style)
+- Nix (nixfmt)
 - TOML (taplo with alignment and sorting)
 - YAML (yamlfmt)
 - JSON and Markdown (prettier)
@@ -589,7 +596,6 @@ nix build -L .#integration-tests
 
 # Run unit tests with nightly toolchain
 nix build -L .#unit-tests-nightly
-
 ```
 
 ## Platform Support
