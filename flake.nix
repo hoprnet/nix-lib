@@ -107,7 +107,7 @@
             # Usage in CI: nix shell github:hoprnet/nix-lib#skopeo -c bash
             packages.skopeo = pkgs.writeShellScriptBin "skopeo" ''
               mkdir -p "''${HOME}/.config/containers"
-              printf 'unqualified-search-registries = []\n' > "''${HOME}/.config/containers/registries.conf"
+              printf 'unqualified-search-registries = ["docker.io"]\n' > "''${HOME}/.config/containers/registries.conf"
               exec ${pkgs.skopeo}/bin/skopeo "$@"
             '';
 

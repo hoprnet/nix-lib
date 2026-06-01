@@ -122,7 +122,7 @@ let
     echo "   Cargo version: $(cargo --version)"
     echo ""
     mkdir -p "''${HOME}/.config/containers"
-    printf 'unqualified-search-registries = []\n' > "''${HOME}/.config/containers/registries.conf"
+    printf 'unqualified-search-registries = ["docker.io"]\n' > "''${HOME}/.config/containers/registries.conf"
   '';
 
   finalShellHook = defaultShellHook + shellHook;
