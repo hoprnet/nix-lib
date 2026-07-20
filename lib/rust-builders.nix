@@ -89,7 +89,9 @@ rec {
     let
       pkgsLocal = import nixpkgs { inherit localSystem; };
       crossSystem = pkgsLocal.lib.systems.examples.x86_64-darwin;
-      isNative = pkgsLocal.lib.systems.equals (pkgsLocal.lib.systems.elaborate localSystem) crossSystem;
+      isNative = pkgsLocal.lib.systems.equals (pkgsLocal.lib.systems.elaborate localSystem) (
+        pkgsLocal.lib.systems.elaborate crossSystem
+      );
     in
     import ./rust-builder.nix {
       inherit
@@ -112,7 +114,9 @@ rec {
     let
       pkgsLocal = import nixpkgs { inherit localSystem; };
       crossSystem = pkgsLocal.lib.systems.examples.aarch64-darwin;
-      isNative = pkgsLocal.lib.systems.equals (pkgsLocal.lib.systems.elaborate localSystem) crossSystem;
+      isNative = pkgsLocal.lib.systems.equals (pkgsLocal.lib.systems.elaborate localSystem) (
+        pkgsLocal.lib.systems.elaborate crossSystem
+      );
     in
     import ./rust-builder.nix {
       inherit
