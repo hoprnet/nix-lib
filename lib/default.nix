@@ -130,14 +130,19 @@ rec {
       extraContents ? [ ],
       basePackages ? null,
       tag ? "latest",
-      pkgsLinux ? null, # Optional Linux pkgs for building on macOS
+      pkgsLinux ? null, # Optional Linux pkgs override (e.g. for building on macOS)
       pathsToLink ? [ "/bin" ],
     }:
     let
-      # Use provided Linux packages or create new ones
+      # Prefer an explicit override, then the ambient pkgs if it's already
+      # Linux (covers native x86_64-linux and aarch64-linux runners), and
+      # only fall back to a cross-imported x86_64-linux nixpkgs when the
+      # ambient system can't build Linux Docker images at all (e.g. Darwin).
       actualPkgs =
         if pkgsLinux != null then
           pkgsLinux
+        else if pkgs.stdenv.isLinux then
+          pkgs
         else
           import nixpkgs {
             system = "x86_64-linux";
