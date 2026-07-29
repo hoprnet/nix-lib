@@ -176,7 +176,16 @@ let
     if runCoverage then
       sharedArgsBase
       // {
-        inherit cargoLlvmCovExtraArgs cargoLlvmCovCommand;
+        inherit cargoLlvmCovCommand;
+        # Keep the instrumented dependency artifacts restored from
+        # buildDepsOnly. Each Nix build starts from a clean build directory, so
+        # there are no stale coverage profiles to retain.
+        cargoLlvmCovExtraArgs = "--no-clean ${cargoLlvmCovExtraArgs}";
+        # Crane restores cargoArtifacts before cargo-llvm-cov runs. Point both
+        # tools at the same directory so the instrumented archive is restored
+        # where cargo-llvm-cov expects it.
+        CARGO_LLVM_COV_TARGET_DIR = "target/llvm-cov-target";
+        CARGO_TARGET_DIR = "target/llvm-cov-target";
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
         RUST_BACKTRACE = "full";
       }
@@ -239,6 +248,22 @@ let
     // {
       pname = pnameDeps;
       src = depsSrc;
+    }
+    // lib.optionalAttrs runCoverage {
+      # cargo-llvm-cov uses a separate instrumented target directory. Prepare
+      # dependencies under the same environment so the final coverage build
+      # can reuse them instead of recompiling the full dependency graph.
+      nativeBuildInputs = sharedArgs.nativeBuildInputs ++ [ craneLib.cargo-llvm-cov ];
+      buildPhaseCargoCommand = ''
+        eval "$(cargo llvm-cov show-env --sh)"
+        ${
+          if cargoLlvmCovCommand == "test" || cargoLlvmCovCommand == "nextest" then
+            "cargoWithProfile test ${sharedArgs.cargoExtraArgs} --no-run"
+          else
+            "cargoWithProfile build ${sharedArgs.cargoExtraArgs}"
+        }
+      '';
+      checkPhaseCargoCommand = "";
     }
     // lib.optionalAttrs (runTests || runNextest) {
       # A single no-run test build prepares normal and dev dependencies,
