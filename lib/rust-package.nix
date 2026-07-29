@@ -92,6 +92,30 @@ let
     lib.lists.take 3 (builtins.splitVersion crateInfo.version)
   );
 
+  # Cargo auto-discovers integration tests from their paths. Preserve those
+  # paths in Crane's dummy source so cargo-llvm-cov computes the same workspace
+  # crate set for dependency preparation and the final coverage build.
+  autoTestTargetPaths =
+    let
+      sourcePrefix = "${toString src}/";
+      relativePath = path: lib.removePrefix sourcePrefix (toString path);
+      isAutoTestTarget = path: builtins.match "(.*/)?tests/([^/]+\\.rs|[^/]+/main\\.rs)" path != null;
+    in
+    map relativePath (
+      lib.filter (path: isAutoTestTarget (relativePath path)) (lib.filesystem.listFilesRecursive src)
+    );
+
+  coverageNextestExtraDummyScript = lib.concatMapStringsSep "\n" (
+    path:
+    let
+      parent = builtins.dirOf path;
+    in
+    ''
+      mkdir -p "$out"/${lib.escapeShellArg parent}
+      touch "$out"/${lib.escapeShellArg path}
+    ''
+  ) autoTestTargetPaths;
+
   isDarwinForDarwin = buildPlatform.isDarwin && hostPlatform.isDarwin;
   isDarwinForNonDarwin = buildPlatform.isDarwin && !hostPlatform.isDarwin;
 
@@ -254,23 +278,29 @@ let
       # dependencies under the same environment so the final coverage build
       # can reuse them instead of recompiling the full dependency graph.
       nativeBuildInputs = sharedArgs.nativeBuildInputs ++ [ craneLib.cargo-llvm-cov ];
-      buildPhaseCargoCommand = ''
-        eval "$(cargo llvm-cov show-env --sh)"
-        ${
-          if cargoLlvmCovCommand == "nextest" then
-            "cargo nextest run --cargo-profile ${actualCargoProfile} ${sharedArgs.cargoExtraArgs} --no-run"
-          else if cargoLlvmCovCommand == "test" then
-            "cargoWithProfile test ${sharedArgs.cargoExtraArgs} --no-run"
-          else
-            "cargoWithProfile build ${sharedArgs.cargoExtraArgs}"
-        }
-      '';
+      buildPhaseCargoCommand =
+        if cargoLlvmCovCommand == "nextest" then
+          ''
+            cargo llvm-cov nextest --cargo-profile ${actualCargoProfile} ${sharedArgs.cargoExtraArgs} --no-report --no-tests=pass
+            cargo llvm-cov clean --workspace --profraw-only
+          ''
+        else
+          ''
+            eval "$(cargo llvm-cov show-env --sh)"
+            ${
+              if cargoLlvmCovCommand == "test" then
+                "cargoWithProfile test ${sharedArgs.cargoExtraArgs} --no-run"
+              else
+                "cargoWithProfile build ${sharedArgs.cargoExtraArgs}"
+            }
+          '';
       checkPhaseCargoCommand = "";
     }
     // lib.optionalAttrs (runCoverage && cargoLlvmCovCommand == "nextest") {
       # The final coverage derivation passes the Cargo profile explicitly to
       # nextest. Keep the dependency build's environment identical.
       CARGO_PROFILE = "";
+      extraDummyScript = coverageNextestExtraDummyScript;
     }
     // lib.optionalAttrs (runTests || runNextest) {
       # A single no-run test build prepares normal and dev dependencies,
