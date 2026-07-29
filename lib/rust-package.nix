@@ -257,13 +257,20 @@ let
       buildPhaseCargoCommand = ''
         eval "$(cargo llvm-cov show-env --sh)"
         ${
-          if cargoLlvmCovCommand == "test" || cargoLlvmCovCommand == "nextest" then
+          if cargoLlvmCovCommand == "nextest" then
+            "cargo nextest run --cargo-profile ${actualCargoProfile} ${sharedArgs.cargoExtraArgs} --no-run"
+          else if cargoLlvmCovCommand == "test" then
             "cargoWithProfile test ${sharedArgs.cargoExtraArgs} --no-run"
           else
             "cargoWithProfile build ${sharedArgs.cargoExtraArgs}"
         }
       '';
       checkPhaseCargoCommand = "";
+    }
+    // lib.optionalAttrs (runCoverage && cargoLlvmCovCommand == "nextest") {
+      # The final coverage derivation passes the Cargo profile explicitly to
+      # nextest. Keep the dependency build's environment identical.
+      CARGO_PROFILE = "";
     }
     // lib.optionalAttrs (runTests || runNextest) {
       # A single no-run test build prepares normal and dev dependencies,
