@@ -7,6 +7,7 @@
 #   builder.callPackage lib.mkRustLibrary { ... }
 
 {
+  buildVersion ? null, # Optional final-artifact version exposed as BUILD_VERSION
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
   cargoToml, # Path to the Cargo.toml file
@@ -24,6 +25,7 @@
   rev ? "unknown", # Git revision for version tracking
   runClippy ? false, # Whether to run Clippy linter
   runTests ? false, # Whether to run tests
+  testCargoProfile ? "test", # Cargo profile used by test mode
   src, # Source tree
   stdenv, # Standard environment
   extraBuildInputs ? [ ], # Additional build inputs
@@ -51,7 +53,7 @@ let
 
   actualCargoProfile =
     if runTests then
-      "test"
+      testCargoProfile
     else if runClippy then
       "dev"
     else
@@ -129,7 +131,8 @@ let
     strictDeps = true;
     doCheck = false;
     VERGEN_GIT_SHA = rev;
-  };
+  }
+  // lib.optionalAttrs (buildVersion != null) { BUILD_VERSION = buildVersion; };
 
   sharedArgs =
     if runTests then
@@ -137,22 +140,39 @@ let
       // {
         cargoTestExtraArgs = "--workspace";
         doCheck = true;
+        doInstallCargoArtifacts = false;
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
         RUST_BACKTRACE = "full";
       }
     else if runClippy then
-      sharedArgsBase // { cargoClippyExtraArgs = "-- -Dwarnings"; }
+      sharedArgsBase
+      // {
+        cargoClippyExtraArgs = "-- -Dwarnings";
+        doInstallCargoArtifacts = false;
+      }
     else
       sharedArgsBase;
 
+  depsOnlyArgs =
+    builtins.removeAttrs sharedArgs [
+      "BUILD_VERSION"
+      "VERGEN_GIT_SHA"
+      "doInstallCargoArtifacts"
+    ]
+    // {
+      pname = pnameDeps;
+      src = depsSrc;
+    }
+    // lib.optionalAttrs runTests {
+      buildPhaseCargoCommand = "";
+      cargoTestExtraArgs = "--no-run --lib";
+    }
+    // lib.optionalAttrs runClippy {
+      buildPhaseCargoCommand = "cargoWithProfile check ${sharedArgs.cargoExtraArgs}";
+    };
+
   defaultArgs = {
-    cargoArtifacts = craneLib.buildDepsOnly (
-      sharedArgs
-      // {
-        pname = pnameDeps;
-        src = depsSrc;
-      }
-    );
+    cargoArtifacts = craneLib.buildDepsOnly depsOnlyArgs;
   };
 
   args = sharedArgs // defaultArgs;

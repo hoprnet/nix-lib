@@ -8,6 +8,7 @@
 
 {
   buildDocs ? false, # Whether to build documentation
+  buildVersion ? null, # Optional final-artifact version exposed as BUILD_VERSION
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
   cargoNextestExtraArgs ? "", # Additional arguments for cargo nextest
@@ -33,6 +34,7 @@
   runCoverage ? false, # Whether to run code coverage
   runNextest ? false, # Whether to run tests with cargo-nextest
   runTests ? false, # Whether to run tests
+  testCargoProfile ? "test", # Cargo profile used by test and coverage modes
   runBench ? false, # Whether to run benchmarks
   buildBench ? false, # Whether to compile benchmarks without running (--no-run)
   cargoLlvmCovExtraArgs ? "--lcov --output-path $out", # Extra args for cargo-llvm-cov
@@ -70,11 +72,11 @@ let
   pname = crateInfo.pname;
   actualCargoProfile =
     if runCoverage then
-      "test"
+      testCargoProfile
     else if runNextest then
-      "test"
+      testCargoProfile
     else if runTests then
-      "test"
+      testCargoProfile
     else if runClippy then
       "dev"
     else if buildDocs then
@@ -167,7 +169,8 @@ let
     doCheck = false;
     # set to the revision because during build the Git info is not available
     VERGEN_GIT_SHA = rev;
-  };
+  }
+  // lib.optionalAttrs (buildVersion != null) { BUILD_VERSION = buildVersion; };
 
   sharedArgs =
     if runCoverage then
@@ -182,6 +185,7 @@ let
       // {
         inherit cargoNextestExtraArgs;
         doCheck = true;
+        doInstallCargoArtifacts = false;
         LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
@@ -190,11 +194,16 @@ let
       // {
         inherit cargoTestExtraArgs;
         doCheck = true;
+        doInstallCargoArtifacts = false;
         LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else if runClippy then
-      sharedArgsBase // { cargoClippyExtraArgs = "-- -Dwarnings"; }
+      sharedArgsBase
+      // {
+        cargoClippyExtraArgs = "-- -Dwarnings";
+        doInstallCargoArtifacts = false;
+      }
     else if runBench || buildBench then
       sharedArgsBase
       // {
@@ -221,18 +230,31 @@ let
     '';
   };
 
+  depsOnlyArgs =
+    builtins.removeAttrs sharedArgs [
+      "BUILD_VERSION"
+      "VERGEN_GIT_SHA"
+      "doInstallCargoArtifacts"
+    ]
+    // {
+      pname = pnameDeps;
+      src = depsSrc;
+    }
+    // lib.optionalAttrs (runTests || runNextest) {
+      # A single no-run test build prepares normal and dev dependencies,
+      # including build-script outputs, without compiling the dependency graph
+      # separately through cargo check and cargo build first.
+      buildPhaseCargoCommand = "";
+      cargoTestExtraArgs = "--no-run --lib";
+    }
+    // lib.optionalAttrs runClippy {
+      # Clippy only reuses cargo check artifacts; a separate cargo build adds
+      # no reusable work for the final lint derivation.
+      buildPhaseCargoCommand = "cargoWithProfile check ${sharedArgs.cargoExtraArgs}";
+    };
+
   defaultArgs = {
-    cargoArtifacts = craneLib.buildDepsOnly (
-      builtins.removeAttrs sharedArgs [ "VERGEN_GIT_SHA" ]
-      // {
-        pname = pnameDeps;
-        src = depsSrc;
-        # Override test args for deps: run --lib tests (which are empty stubs)
-        # to ensure all test artifacts including build.rs outputs are generated,
-        # without requiring actual integration test files in the dep source.
-        cargoTestExtraArgs = "--lib";
-      }
-    );
+    cargoArtifacts = craneLib.buildDepsOnly depsOnlyArgs;
   };
 
   args = if buildDocs then sharedArgs // docsArgs else sharedArgs // defaultArgs;
