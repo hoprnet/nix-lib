@@ -259,6 +259,14 @@ let
 
   args = if buildDocs then sharedArgs // docsArgs else sharedArgs // defaultArgs;
 
+  # cargo-llvm-cov's --profile option becomes the nextest runner profile when
+  # using its nextest subcommand. Pass the Cargo build profile through
+  # nextest's unambiguous --cargo-profile option instead.
+  coverageNextestArgs = lib.optionalAttrs (runCoverage && cargoLlvmCovCommand == "nextest") {
+    CARGO_PROFILE = "";
+    cargoExtraArgs = "--cargo-profile ${actualCargoProfile} ${args.cargoExtraArgs}";
+  };
+
   mkBench = import ./cargo-bench.nix {
     mkCargoDerivation = craneLib.mkCargoDerivation;
     noRun = buildBench;
@@ -282,6 +290,7 @@ let
 in
 builder (
   args
+  // coverageNextestArgs
   // {
     inherit src postInstall;
 
