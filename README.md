@@ -165,6 +165,8 @@ package = builder.callPackage lib.mkRustPackage {
   CARGO_PROFILE = "release"; # Optional: release/dev/test
   runTests = false;          # Optional: run tests
   cargoTestExtraArgs = "--workspace";  # Optional: args for cargo test
+  runNextest = false;        # Optional: run tests with cargo-nextest
+  cargoNextestExtraArgs = ""; # Optional: additional args for cargo nextest
   prependPackageName = true;           # Optional: prepend -p ${pname} to cargo args
   runClippy = false;         # Optional: run clippy
   buildDocs = false;         # Optional: build documentation
@@ -203,6 +205,23 @@ integration-tests = builder.callPackage lib.mkRustPackage {
 
 These can be exposed as packages for `nix build` or as checks for
 `nix flake check`.
+
+##### Running Tests with Nextest
+
+Nextest tests use the same dependency-only derivation as other Rust package
+modes, so their Cargo artifacts can be reused from a Nix binary cache.
+
+```nix
+nextest = builder.callPackage lib.mkRustPackage {
+  src = sources.test;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+  runNextest = true;
+  prependPackageName = false;
+  cargoExtraArgs = "--workspace";
+};
+```
 
 #### `mkRustLibrary`
 

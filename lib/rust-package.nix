@@ -10,6 +10,7 @@
   buildDocs ? false, # Whether to build documentation
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
+  cargoNextestExtraArgs ? "", # Additional arguments for cargo nextest
   cargoTestExtraArgs ? "--workspace", # Additional arguments for cargo test (before --)
   prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   cargoToml, # Path to the Cargo.toml file
@@ -30,6 +31,7 @@
   rev ? "unknown", # Git revision for version tracking
   runClippy ? false, # Whether to run Clippy linter
   runCoverage ? false, # Whether to run code coverage
+  runNextest ? false, # Whether to run tests with cargo-nextest
   runTests ? false, # Whether to run tests
   runBench ? false, # Whether to run benchmarks
   buildBench ? false, # Whether to compile benchmarks without running (--no-run)
@@ -68,6 +70,8 @@ let
   pname = crateInfo.pname;
   actualCargoProfile =
     if runCoverage then
+      "test"
+    else if runNextest then
       "test"
     else if runTests then
       "test"
@@ -173,6 +177,14 @@ let
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
         RUST_BACKTRACE = "full";
       }
+    else if runNextest then
+      sharedArgsBase
+      // {
+        inherit cargoNextestExtraArgs;
+        doCheck = true;
+        LD_LIBRARY_PATH = opensslLibPath;
+        RUST_BACKTRACE = "full";
+      }
     else if runTests then
       sharedArgsBase
       // {
@@ -233,6 +245,8 @@ let
   builder =
     if runCoverage then
       craneLib.cargoLlvmCov
+    else if runNextest then
+      craneLib.cargoNextest
     else if runTests then
       craneLib.cargoTest
     else if runClippy then

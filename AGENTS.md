@@ -90,8 +90,8 @@ The library is organized as a flake that exposes functions through
 #### Rust Package Builder (`rust-package.nix`)
 
 - **Low-level builder**: Called via `builder.callPackage` from consumer projects
-- **Multi-mode**: Supports release builds, tests (runTests), clippy (runClippy),
-  docs (buildDocs), and benchmarks (runBench)
+- **Multi-mode**: Supports release builds, tests (runTests), Nextest
+  (runNextest), clippy (runClippy), docs (buildDocs), and benchmarks (runBench)
 - **Configurable test arguments**: The `cargoTestExtraArgs` parameter (default:
   `"--workspace"`) controls what flags are passed to `cargo test`. This enables
   splitting unit tests (`--lib`) and integration tests (`--test '*'`) into
