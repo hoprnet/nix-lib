@@ -211,7 +211,7 @@ let
 
   defaultArgs = {
     cargoArtifacts = craneLib.buildDepsOnly (
-      sharedArgs
+      builtins.removeAttrs sharedArgs [ "VERGEN_GIT_SHA" ]
       // {
         pname = pnameDeps;
         src = depsSrc;
