@@ -8,8 +8,10 @@
 
 {
   buildDocs ? false, # Whether to build documentation
+  buildVersion ? null, # Optional final-artifact version exposed as BUILD_VERSION
   CARGO_PROFILE ? "release", # Cargo build profile (release/dev/etc)
   cargoExtraArgs ? "", # Additional arguments for cargo build
+  cargoNextestExtraArgs ? "", # Additional arguments for cargo nextest
   cargoTestExtraArgs ? "--workspace", # Additional arguments for cargo test (before --)
   prependPackageName ? true, # When true, prepend -p ${pname} to cargoExtraArgs
   cargoToml, # Path to the Cargo.toml file
@@ -30,7 +32,9 @@
   rev ? "unknown", # Git revision for version tracking
   runClippy ? false, # Whether to run Clippy linter
   runCoverage ? false, # Whether to run code coverage
+  runNextest ? false, # Whether to run tests with cargo-nextest
   runTests ? false, # Whether to run tests
+  testCargoProfile ? "test", # Cargo profile used by test and coverage modes
   runBench ? false, # Whether to run benchmarks
   buildBench ? false, # Whether to compile benchmarks without running (--no-run)
   cargoLlvmCovExtraArgs ? "--lcov --output-path $out", # Extra args for cargo-llvm-cov
@@ -68,9 +72,11 @@ let
   pname = crateInfo.pname;
   actualCargoProfile =
     if runCoverage then
-      "test"
+      testCargoProfile
+    else if runNextest then
+      testCargoProfile
     else if runTests then
-      "test"
+      testCargoProfile
     else if runClippy then
       "dev"
     else if buildDocs then
@@ -85,6 +91,30 @@ let
   version = lib.strings.concatStringsSep "." (
     lib.lists.take 3 (builtins.splitVersion crateInfo.version)
   );
+
+  # Cargo auto-discovers integration tests from their paths. Preserve those
+  # paths in Crane's dummy source so cargo-llvm-cov computes the same workspace
+  # crate set for dependency preparation and the final coverage build.
+  autoTestTargetPaths =
+    let
+      sourcePrefix = "${toString src}/";
+      relativePath = path: lib.removePrefix sourcePrefix (toString path);
+      isAutoTestTarget = path: builtins.match "(.*/)?tests/([^/]+\\.rs|[^/]+/main\\.rs)" path != null;
+    in
+    map relativePath (
+      lib.filter (path: isAutoTestTarget (relativePath path)) (lib.filesystem.listFilesRecursive src)
+    );
+
+  coverageNextestExtraDummyScript = lib.concatMapStringsSep "\n" (
+    path:
+    let
+      parent = builtins.dirOf path;
+    in
+    ''
+      mkdir -p "$out"/${lib.escapeShellArg parent}
+      touch "$out"/${lib.escapeShellArg path}
+    ''
+  ) autoTestTargetPaths;
 
   isDarwinForDarwin = buildPlatform.isDarwin && hostPlatform.isDarwin;
   isDarwinForNonDarwin = buildPlatform.isDarwin && !hostPlatform.isDarwin;
@@ -163,14 +193,33 @@ let
     doCheck = false;
     # set to the revision because during build the Git info is not available
     VERGEN_GIT_SHA = rev;
-  };
+  }
+  // lib.optionalAttrs (buildVersion != null) { BUILD_VERSION = buildVersion; };
 
   sharedArgs =
     if runCoverage then
       sharedArgsBase
       // {
-        inherit cargoLlvmCovExtraArgs cargoLlvmCovCommand;
+        inherit cargoLlvmCovCommand;
+        # Keep the instrumented dependency artifacts restored from
+        # buildDepsOnly. Each Nix build starts from a clean build directory, so
+        # there are no stale coverage profiles to retain.
+        cargoLlvmCovExtraArgs = "--no-clean ${cargoLlvmCovExtraArgs}";
+        # Crane restores cargoArtifacts before cargo-llvm-cov runs. Point both
+        # tools at the same directory so the instrumented archive is restored
+        # where cargo-llvm-cov expects it.
+        CARGO_LLVM_COV_TARGET_DIR = "target/llvm-cov-target";
+        CARGO_TARGET_DIR = "target/llvm-cov-target";
         LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
+        RUST_BACKTRACE = "full";
+      }
+    else if runNextest then
+      sharedArgsBase
+      // {
+        inherit cargoNextestExtraArgs;
+        doCheck = true;
+        doInstallCargoArtifacts = false;
+        LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else if runTests then
@@ -178,11 +227,16 @@ let
       // {
         inherit cargoTestExtraArgs;
         doCheck = true;
+        doInstallCargoArtifacts = false;
         LD_LIBRARY_PATH = opensslLibPath;
         RUST_BACKTRACE = "full";
       }
     else if runClippy then
-      sharedArgsBase // { cargoClippyExtraArgs = "-- -Dwarnings"; }
+      sharedArgsBase
+      // {
+        cargoClippyExtraArgs = "-- -Dwarnings";
+        doInstallCargoArtifacts = false;
+      }
     else if runBench || buildBench then
       sharedArgsBase
       // {
@@ -209,21 +263,71 @@ let
     '';
   };
 
+  depsOnlyArgs =
+    builtins.removeAttrs sharedArgs [
+      "BUILD_VERSION"
+      "VERGEN_GIT_SHA"
+      "doInstallCargoArtifacts"
+    ]
+    // {
+      pname = pnameDeps;
+      src = depsSrc;
+    }
+    // lib.optionalAttrs runCoverage {
+      # cargo-llvm-cov uses a separate instrumented target directory. Prepare
+      # dependencies under the same environment so the final coverage build
+      # can reuse them instead of recompiling the full dependency graph.
+      nativeBuildInputs = sharedArgs.nativeBuildInputs ++ [ craneLib.cargo-llvm-cov ];
+      buildPhaseCargoCommand =
+        if cargoLlvmCovCommand == "nextest" then
+          ''
+            cargo llvm-cov nextest --cargo-profile ${actualCargoProfile} ${sharedArgs.cargoExtraArgs} --no-report --no-tests=pass
+            cargo llvm-cov clean --workspace --profraw-only
+          ''
+        else
+          ''
+            eval "$(cargo llvm-cov show-env --sh)"
+            ${
+              if cargoLlvmCovCommand == "test" then
+                "cargoWithProfile test ${sharedArgs.cargoExtraArgs} --no-run"
+              else
+                "cargoWithProfile build ${sharedArgs.cargoExtraArgs}"
+            }
+          '';
+      checkPhaseCargoCommand = "";
+    }
+    // lib.optionalAttrs (runCoverage && cargoLlvmCovCommand == "nextest") {
+      # The final coverage derivation passes the Cargo profile explicitly to
+      # nextest. Keep the dependency build's environment identical.
+      CARGO_PROFILE = "";
+      extraDummyScript = coverageNextestExtraDummyScript;
+    }
+    // lib.optionalAttrs (runTests || runNextest) {
+      # A single no-run test build prepares normal and dev dependencies,
+      # including build-script outputs, without compiling the dependency graph
+      # separately through cargo check and cargo build first.
+      buildPhaseCargoCommand = "";
+      cargoTestExtraArgs = "--no-run --lib";
+    }
+    // lib.optionalAttrs runClippy {
+      # Clippy only reuses cargo check artifacts; a separate cargo build adds
+      # no reusable work for the final lint derivation.
+      buildPhaseCargoCommand = "cargoWithProfile check ${sharedArgs.cargoExtraArgs}";
+    };
+
   defaultArgs = {
-    cargoArtifacts = craneLib.buildDepsOnly (
-      sharedArgs
-      // {
-        pname = pnameDeps;
-        src = depsSrc;
-        # Override test args for deps: run --lib tests (which are empty stubs)
-        # to ensure all test artifacts including build.rs outputs are generated,
-        # without requiring actual integration test files in the dep source.
-        cargoTestExtraArgs = "--lib";
-      }
-    );
+    cargoArtifacts = craneLib.buildDepsOnly depsOnlyArgs;
   };
 
   args = if buildDocs then sharedArgs // docsArgs else sharedArgs // defaultArgs;
+
+  # cargo-llvm-cov's --profile option becomes the nextest runner profile when
+  # using its nextest subcommand. Pass the Cargo build profile through
+  # nextest's unambiguous --cargo-profile option instead.
+  coverageNextestArgs = lib.optionalAttrs (runCoverage && cargoLlvmCovCommand == "nextest") {
+    CARGO_PROFILE = "";
+    cargoExtraArgs = "--cargo-profile ${actualCargoProfile} ${args.cargoExtraArgs}";
+  };
 
   mkBench = import ./cargo-bench.nix {
     mkCargoDerivation = craneLib.mkCargoDerivation;
@@ -233,6 +337,8 @@ let
   builder =
     if runCoverage then
       craneLib.cargoLlvmCov
+    else if runNextest then
+      craneLib.cargoNextest
     else if runTests then
       craneLib.cargoTest
     else if runClippy then
@@ -246,6 +352,7 @@ let
 in
 builder (
   args
+  // coverageNextestArgs
   // {
     inherit src postInstall;
 

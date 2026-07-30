@@ -162,9 +162,13 @@ package = builder.callPackage lib.mkRustPackage {
   depsSrc = sources.deps;
   cargoToml = ./Cargo.toml;
   rev = "v1.0.0";
+  buildVersion = "1.0.0+commit.abcdef0"; # Optional: final artifact only
   CARGO_PROFILE = "release"; # Optional: release/dev/test
   runTests = false;          # Optional: run tests
+  testCargoProfile = "test"; # Optional: profile for tests and coverage
   cargoTestExtraArgs = "--workspace";  # Optional: args for cargo test
+  runNextest = false;        # Optional: run tests with cargo-nextest
+  cargoNextestExtraArgs = ""; # Optional: additional args for cargo nextest
   prependPackageName = true;           # Optional: prepend -p ${pname} to cargo args
   runClippy = false;         # Optional: run clippy
   buildDocs = false;         # Optional: build documentation
@@ -172,6 +176,11 @@ package = builder.callPackage lib.mkRustPackage {
   buildBench = false;        # Optional: compile benchmarks (--no-run)
 };
 ```
+
+When `buildVersion` is set, `BUILD_VERSION` is available while compiling the
+final artifact but is deliberately excluded from the dependency-only derivation.
+Consumers can use `option_env!("BUILD_VERSION")` and fall back to
+`env!("CARGO_PKG_VERSION")` for local builds.
 
 ##### Splitting Unit and Integration Tests
 
@@ -204,11 +213,35 @@ integration-tests = builder.callPackage lib.mkRustPackage {
 These can be exposed as packages for `nix build` or as checks for
 `nix flake check`.
 
+##### Running Tests with Nextest
+
+Nextest tests use the same dependency-only derivation as other Rust package
+modes, so their Cargo artifacts can be reused from a Nix binary cache. Test
+dependencies are prepared in one `cargo test --no-run --lib` pass. The final
+test derivation stores only its success result rather than archiving its Cargo
+target directory; the reusable artifacts remain in the dependency derivation.
+
+```nix
+nextest = builder.callPackage lib.mkRustPackage {
+  src = sources.test;
+  depsSrc = sources.deps;
+  cargoToml = ./Cargo.toml;
+  rev = "v1.0.0";
+  runNextest = true;
+  prependPackageName = false;
+  cargoExtraArgs = "--workspace";
+};
+```
+
+The same lightweight final output is used for `runTests` and `runClippy`
+derivations.
+
 #### `mkRustLibrary`
 
 Build a Rust library crate (a crate with `lib.rs` and no `main.rs`). The
 compiled `.rlib` and `.a` artifacts are installed to `$out/lib/`. Call via
-`builder.callPackage`.
+`builder.callPackage`. Its test and Clippy modes also keep reusable Cargo
+artifacts exclusively in the dependency derivation.
 
 ```nix
 myLib = builder.callPackage lib.mkRustLibrary {
@@ -218,6 +251,7 @@ myLib = builder.callPackage lib.mkRustLibrary {
   rev = "v1.0.0";
   CARGO_PROFILE = "release"; # Optional: release/dev/test (default: release)
   runTests = false;          # Optional: run tests
+  testCargoProfile = "test"; # Optional: profile used when runTests is enabled
   runClippy = false;         # Optional: run clippy
 };
 

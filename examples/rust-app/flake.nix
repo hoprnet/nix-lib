@@ -115,6 +115,15 @@
             builder = builders.localNightly;
             cargoTestExtraArgs = "--lib";
           };
+          nextest = builders.local.callPackage lib.mkRustPackage {
+            src = sources.test;
+            depsSrc = sources.deps;
+            cargoToml = ./Cargo.toml;
+            inherit rev;
+            runNextest = true;
+            prependPackageName = false;
+            cargoExtraArgs = "--workspace";
+          };
 
         in
         {
@@ -141,6 +150,7 @@
               integration-tests
               test-nightly
               unit-tests-nightly
+              nextest
               ;
           };
 
@@ -185,6 +195,7 @@
               integration-tests
               test-nightly
               unit-tests-nightly
+              nextest
               ;
 
             # Run clippy linter
