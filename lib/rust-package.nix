@@ -25,6 +25,7 @@
   makeSetupHook, # Nix setup hook creator
   mold, # Fast linker for Rust
   llvmPackages, # LLVM toolchain packages
+  outputHashes ? { }, # Nix fetch hashes for git-sourced Cargo.lock deps, keyed by their exact `source` string (enables shallow, cache-substitutable vendoring instead of an unshallow all-refs fetch)
   pandoc, # Universal document converter
   pkg-config, # Package configuration tool
   pkgs, # Nixpkgs package set
@@ -166,7 +167,12 @@ let
   opensslLibPath = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
 
   sharedArgsBase = {
-    inherit pname pnameSuffix version;
+    inherit
+      pname
+      pnameSuffix
+      version
+      outputHashes
+      ;
     CARGO_PROFILE = actualCargoProfile;
 
     nativeBuildInputs = [
