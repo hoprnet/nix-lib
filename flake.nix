@@ -19,13 +19,13 @@
 
   inputs = {
     # Core Nix ecosystem dependencies
-    nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-26.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
 
     # Rust toolchain and build system
     rust-overlay.url = "github:oxalica/rust-overlay/master";
-    crane.url = "github:ipetkov/crane/v0.23.0";
+    crane.url = "github:ipetkov/crane/v0.23.4";
 
     # Flake organization and formatting
     flake-parts.url = "github:hercules-ci/flake-parts";
