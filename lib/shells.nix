@@ -52,7 +52,7 @@ let
   craneLib = (crane.mkLib pkgs).overrideToolchain finalRustToolchain;
 
   # Platform-specific packages
-  linuxPackages = pkgs.lib.optionals pkgs.stdenv.isLinux (
+  linuxPackages = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux (
     with pkgs;
     [
       mold # Fast linker (Linux only)
@@ -136,7 +136,7 @@ craneLib.devShell {
       pkgs.openssl
       pkgs.curl
     ]
-    ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libgcc.lib ]
+    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.libgcc.lib ]
   );
 
   CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
