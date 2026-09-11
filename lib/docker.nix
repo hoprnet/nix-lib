@@ -69,7 +69,7 @@ let
     config = { inherit Cmd Entrypoint Env; };
   };
 in
-if pkgs.stdenv.isDarwin then
+if pkgs.stdenv.hostPlatform.isDarwin then
   pkgs.dockerTools.buildImage buildImageArgs
 else
   pkgs.dockerTools.buildLayeredImage buildLayeredImageArgs

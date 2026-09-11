@@ -86,6 +86,8 @@ let
 
     # Nix formatting using official Nixpkgs style
     programs.nixfmt.enable = true;
+    # pinned explicitly: older treefmt-nix defaults to the deprecated nixfmt-rfc-style
+    programs.nixfmt.package = pkgs.nixfmt;
 
     # TOML formatting
     # Note: We configure taplo manually via settings instead of programs.taplo.enable

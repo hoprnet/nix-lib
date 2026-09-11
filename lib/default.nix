@@ -141,7 +141,7 @@ rec {
       actualPkgs =
         if pkgsLinux != null then
           pkgsLinux
-        else if pkgs.stdenv.isLinux then
+        else if pkgs.stdenv.hostPlatform.isLinux then
           pkgs
         else
           import nixpkgs {
