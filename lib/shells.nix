@@ -12,6 +12,9 @@
   qualityTools ? null, # Code-quality metric tools (see quality-tools.nix)
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
+  llvmPackage ? pkgs.llvm, # LLVM providing llvm-cov/llvm-profdata for coverage;
+  # override to match a custom rustToolchain's LLVM version (cargo-llvm-cov
+  # requires them compatible with the rustc LLVM, or profile merging can fail)
   extraPackages ? [ ], # Additional packages (take PATH precedence over defaults)
   shellName ? "Development", # Name shown in shell prompt
   shellHook ? "", # Additional shell hook commands
@@ -110,7 +113,7 @@ let
     if wantCoverage then
       [
         pkgsUnstable.cargo-llvm-cov
-        pkgs.llvm
+        llvmPackage
       ]
     else
       [ ];
@@ -169,7 +172,7 @@ craneLib.devShell (
   # the rustup llvm-tools-preview component, which a Nix (non-rustup) toolchain —
   # including a consumer-supplied one — doesn't provide.
   // pkgs.lib.optionalAttrs wantCoverage {
-    LLVM_COV = "${pkgs.llvm}/bin/llvm-cov";
-    LLVM_PROFDATA = "${pkgs.llvm}/bin/llvm-profdata";
+    LLVM_COV = "${llvmPackage}/bin/llvm-cov";
+    LLVM_PROFDATA = "${llvmPackage}/bin/llvm-profdata";
   }
 )

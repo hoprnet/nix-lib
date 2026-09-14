@@ -175,6 +175,7 @@ rec {
     {
       rustToolchain ? null,
       rustToolchainFile ? null,
+      llvmPackage ? pkgs.llvm,
       extraPackages ? [ ],
       shellName ? "Development",
       shellHook ? "",
@@ -194,6 +195,7 @@ rec {
         qualityTools
         rustToolchain
         rustToolchainFile
+        llvmPackage
         extraPackages
         shellName
         shellHook
