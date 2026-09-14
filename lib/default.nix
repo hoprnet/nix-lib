@@ -37,6 +37,7 @@ let
 in
 rec {
   ciTools = import ./ci-tools.nix;
+  qualityTools = import ./quality-tools.nix;
 
   # Source Filtering
   # ---------------
@@ -174,6 +175,7 @@ rec {
     {
       rustToolchain ? null,
       rustToolchainFile ? null,
+      llvmPackage ? pkgs.llvm,
       extraPackages ? [ ],
       shellName ? "Development",
       shellHook ? "",
@@ -183,14 +185,17 @@ rec {
       postgresPackage ? null,
       withLlvmTools ? false,
       includeCiPackages ? true,
+      includeQualityTools ? true,
     }:
     import ./shells.nix {
       inherit
         pkgs
         crane
         ciTools
+        qualityTools
         rustToolchain
         rustToolchainFile
+        llvmPackage
         extraPackages
         shellName
         shellHook
@@ -200,6 +205,7 @@ rec {
         postgresPackage
         withLlvmTools
         includeCiPackages
+        includeQualityTools
         ;
       pkgsUnstable = pkgsUnstable;
     };

@@ -9,8 +9,12 @@
   pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-llvm-cov)
   crane,
   ciTools,
+  qualityTools ? null, # Code-quality metric tools (see quality-tools.nix)
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
+  llvmPackage ? pkgs.llvm, # LLVM providing llvm-cov/llvm-profdata for coverage;
+  # override to match a custom rustToolchain's LLVM version (cargo-llvm-cov
+  # requires them compatible with the rustc LLVM, or profile merging can fail)
   extraPackages ? [ ], # Additional packages (take PATH precedence over defaults)
   shellName ? "Development", # Name shown in shell prompt
   shellHook ? "", # Additional shell hook commands
@@ -20,6 +24,7 @@
   postgresPackage ? null, # Optional PostgreSQL package override
   withLlvmTools ? false, # Whether to include llvm-tools for code coverage
   includeCiPackages ? true, # Whether to include CI/CD tooling
+  includeQualityTools ? true, # Whether to include code-quality metric tools
 }:
 
 let
@@ -32,7 +37,11 @@ let
     else
       buildPlatform.config;
 
-  llvmToolsExtensions = if withLlvmTools then [ "llvm-tools-preview" ] else [ ];
+  # The code-quality CRAP metric needs coverage too (cargo-llvm-cov +
+  # llvm-tools-preview), so the quality suite implies the coverage toolchain.
+  wantCoverage = withLlvmTools || includeQualityTools;
+
+  llvmToolsExtensions = if wantCoverage then [ "llvm-tools-preview" ] else [ ];
 
   # Use provided Rust toolchain or default from rust-toolchain.toml or stable
   defaultRustToolchain =
@@ -95,16 +104,33 @@ let
   ];
 
   # Coverage packages (optional)
-  coveragePackages = if withLlvmTools then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
+  # Single source of cargo-llvm-cov (unstable, a deliberate choice); shipped
+  # whenever coverage is wanted, so quality-tools does not re-list it and shadow
+  # this build on PATH. llvm provides llvm-cov/llvm-profdata for the LLVM_COV /
+  # LLVM_PROFDATA env below, so cargo-llvm-cov works without the rustup
+  # `llvm-tools-preview` component (unavailable in a non-rustup Nix toolchain).
+  coveragePackages =
+    if wantCoverage then
+      [
+        pkgsUnstable.cargo-llvm-cov
+        llvmPackage
+      ]
+    else
+      [ ];
 
   # CI/CD packages
   ciPackages = if includeCiPackages then ciTools.mkPackages pkgs else [ ];
+
+  # Code-quality metric tools (the code-quality `measure` workflow's tool chain)
+  qualityToolsPackages =
+    if includeQualityTools && qualityTools != null then qualityTools.mkPackages pkgs else [ ];
 
   # All packages combined
   allPackages =
     extraPackages
     ++ corePackages
     ++ ciPackages
+    ++ qualityToolsPackages
     ++ coveragePackages
     ++ postgresPackages
     ++ treefmtPackages
@@ -127,17 +153,26 @@ let
   # mold is only supported on Linux, so falling back to lld on Darwin
   linker = if buildPlatform.isDarwin then "lld" else "mold";
 in
-craneLib.devShell {
-  shellHook = finalShellHook;
-  packages = allPackages;
+craneLib.devShell (
+  {
+    shellHook = finalShellHook;
+    packages = allPackages;
 
-  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
-    [
-      pkgs.openssl
-      pkgs.curl
-    ]
-    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.libgcc.lib ]
-  );
+    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
+      [
+        pkgs.openssl
+        pkgs.curl
+      ]
+      ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.libgcc.lib ]
+    );
 
-  CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
-}
+    CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
+  }
+  # Point cargo-llvm-cov at llvm's own llvm-cov/llvm-profdata so it doesn't need
+  # the rustup llvm-tools-preview component, which a Nix (non-rustup) toolchain —
+  # including a consumer-supplied one — doesn't provide.
+  // pkgs.lib.optionalAttrs wantCoverage {
+    LLVM_COV = "${llvmPackage}/bin/llvm-cov";
+    LLVM_PROFDATA = "${llvmPackage}/bin/llvm-profdata";
+  }
+)
