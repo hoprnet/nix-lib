@@ -103,8 +103,17 @@ let
   # Coverage packages (optional)
   # Single source of cargo-llvm-cov (unstable, a deliberate choice); shipped
   # whenever coverage is wanted, so quality-tools does not re-list it and shadow
-  # this build on PATH.
-  coveragePackages = if wantCoverage then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
+  # this build on PATH. llvm provides llvm-cov/llvm-profdata for the LLVM_COV /
+  # LLVM_PROFDATA env below, so cargo-llvm-cov works without the rustup
+  # `llvm-tools-preview` component (unavailable in a non-rustup Nix toolchain).
+  coveragePackages =
+    if wantCoverage then
+      [
+        pkgsUnstable.cargo-llvm-cov
+        pkgs.llvm
+      ]
+    else
+      [ ];
 
   # CI/CD packages
   ciPackages = if includeCiPackages then ciTools.mkPackages pkgs else [ ];
@@ -141,17 +150,26 @@ let
   # mold is only supported on Linux, so falling back to lld on Darwin
   linker = if buildPlatform.isDarwin then "lld" else "mold";
 in
-craneLib.devShell {
-  shellHook = finalShellHook;
-  packages = allPackages;
+craneLib.devShell (
+  {
+    shellHook = finalShellHook;
+    packages = allPackages;
 
-  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
-    [
-      pkgs.openssl
-      pkgs.curl
-    ]
-    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.libgcc.lib ]
-  );
+    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
+      [
+        pkgs.openssl
+        pkgs.curl
+      ]
+      ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.libgcc.lib ]
+    );
 
-  CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
-}
+    CARGO_BUILD_RUSTFLAGS = "-C link-arg=-fuse-ld=${linker}";
+  }
+  # Point cargo-llvm-cov at llvm's own llvm-cov/llvm-profdata so it doesn't need
+  # the rustup llvm-tools-preview component, which a Nix (non-rustup) toolchain —
+  # including a consumer-supplied one — doesn't provide.
+  // pkgs.lib.optionalAttrs wantCoverage {
+    LLVM_COV = "${pkgs.llvm}/bin/llvm-cov";
+    LLVM_PROFDATA = "${pkgs.llvm}/bin/llvm-profdata";
+  }
+)
