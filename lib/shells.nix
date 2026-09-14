@@ -9,6 +9,7 @@
   pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-llvm-cov)
   crane,
   ciTools,
+  qualityTools ? null, # Code-quality metric tools (see quality-tools.nix)
   rustToolchain ? null, # Optional Rust toolchain override
   rustToolchainFile ? null, # Optional path to rust-toolchain.toml
   extraPackages ? [ ], # Additional packages (take PATH precedence over defaults)
@@ -20,6 +21,7 @@
   postgresPackage ? null, # Optional PostgreSQL package override
   withLlvmTools ? false, # Whether to include llvm-tools for code coverage
   includeCiPackages ? true, # Whether to include CI/CD tooling
+  includeQualityTools ? true, # Whether to include code-quality metric tools
 }:
 
 let
@@ -100,11 +102,16 @@ let
   # CI/CD packages
   ciPackages = if includeCiPackages then ciTools.mkPackages pkgs else [ ];
 
+  # Code-quality metric tools (the code-quality `measure` workflow's tool chain)
+  qualityToolsPackages =
+    if includeQualityTools && qualityTools != null then qualityTools.mkPackages pkgs else [ ];
+
   # All packages combined
   allPackages =
     extraPackages
     ++ corePackages
     ++ ciPackages
+    ++ qualityToolsPackages
     ++ coveragePackages
     ++ postgresPackages
     ++ treefmtPackages
