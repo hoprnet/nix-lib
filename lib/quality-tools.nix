@@ -6,11 +6,15 @@
 # by attribute name; the few it does not package are built here from crates.io /
 # npm, pinned to versions verified against the skill's metric scripts.
 #
-# Only aarch64-darwin and x86_64-linux are supported for the built tools (jscpd
-# ships prebuilt per-platform binaries) — other systems throw rather than
-# silently picking a wrong binary.
+# The three cargo tools build on any platform; only jscpd ships prebuilt
+# per-platform binaries, so it is omitted (not fatal) on systems without a
+# pinned archive — the code-quality discovery step then reports duplication as
+# unavailable rather than the whole dev shell failing to evaluate.
 rec {
-  # Tools present in nixpkgs, pulled by attribute name.
+  # Tools present in nixpkgs, pulled by attribute name. cargo-llvm-cov (coverage
+  # for CRAP) is intentionally NOT listed: shells.nix ships it from unstable
+  # nixpkgs (a deliberate choice), and re-listing the stable one here would
+  # shadow it on PATH. jq is likewise omitted — corePackages already provides it.
   names = [
     "rust-code-analysis" # cognitive/mi/halstead/loc/nom/hotspots (rust-code-analysis-cli)
     "cargo-public-api" # api surface
@@ -18,9 +22,7 @@ rec {
     "cargo-machete" # unused dependencies (source/manifest scan)
     "cargo-shear" # unused dependencies (compiler-assisted; sibling of machete)
     "cargo-mutants" # mutation testing
-    "cargo-llvm-cov" # coverage for CRAP
     "ripgrep" # unsafe density
-    "jq" # JSON plumbing in the metric scripts
     "git" # churn for hotspots
   ];
 
@@ -58,9 +60,37 @@ rec {
           hash = "sha512-p88BpA5QzyZzyF8uYeVCz9ZBoZYg8s6AwcDc3NkIDNTbrrF0sKqgGjclGWAoJvYAiGExiFNqV768pVHsE//l0Q==";
         };
       };
-      jscpdInfo =
-        jscpdByPlatform.${pkgs.stdenv.hostPlatform.system}
-          or (throw "jscpd: no prebuilt binary pinned for ${pkgs.stdenv.hostPlatform.system}");
+      system = pkgs.stdenv.hostPlatform.system;
+
+      # Near-duplicate code detection. jscpd is a prebuilt per-platform binary;
+      # on a system without a pinned archive it is simply omitted (not a throw),
+      # so the default dev shell still evaluates and discovery reports
+      # duplication as unavailable there.
+      jscpd = pkgs.lib.optionalAttrs (jscpdByPlatform ? ${system}) {
+        jscpd = pkgs.stdenvNoCC.mkDerivation {
+          pname = "jscpd";
+          version = "5.2.0";
+          src = pkgs.fetchurl { inherit (jscpdByPlatform.${system}) url hash; };
+          sourceRoot = ".";
+          unpackCmd = "tar xzf $curSrc";
+          dontBuild = true;
+          # The Linux tarball is a dynamically-linked ELF whose interpreter
+          # (/lib64/ld-linux-x86-64.so.2) and libs aren't Nix store paths, so it
+          # won't start on NixOS; autoPatchelfHook rewrites them to the Nix
+          # loader + the runtime libs below. No-op on Darwin (Mach-O).
+          nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+            pkgs.autoPatchelfHook
+          ];
+          buildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+            pkgs.stdenv.cc.cc.lib # libgcc_s
+            pkgs.glibc # libc / libm / ld-linux
+          ];
+          installPhase = ''
+            mkdir -p $out/bin
+            install -m755 package/bin/jscpd $out/bin/jscpd
+          '';
+        };
+      };
     in
     {
       # Per-function risk = cyclomatic complexity x how untested it is.
@@ -84,23 +114,10 @@ rec {
         srcHash = "sha256-g/QH1QVYW06sM8RvixAMpJw4kRi8qVGu//s2SOAPziE=";
         cargoHash = "sha256-Cdm25jK/5xpMhpQdYtfwkBqyWMK94twX9iGjJGdOlSw=";
       };
-      # Near-duplicate code detection.
-      jscpd = pkgs.stdenvNoCC.mkDerivation {
-        pname = "jscpd";
-        version = "5.2.0";
-        src = pkgs.fetchurl { inherit (jscpdInfo) url hash; };
-        sourceRoot = ".";
-        unpackCmd = "tar xzf $curSrc";
-        dontBuild = true;
-        installPhase = ''
-          mkdir -p $out/bin
-          install -m755 package/bin/jscpd $out/bin/jscpd
-        '';
-      };
-    };
+    }
+    // jscpd;
 
   # The full package list for a given pkgs: nixpkgs tools by name plus the
   # locally-built ones.
-  mkPackages =
-    pkgs: (map (n: builtins.getAttr n pkgs) names) ++ (builtins.attrValues (mkCustom pkgs));
+  mkPackages = pkgs: (map (n: pkgs.${n}) names) ++ (builtins.attrValues (mkCustom pkgs));
 }

@@ -34,7 +34,11 @@ let
     else
       buildPlatform.config;
 
-  llvmToolsExtensions = if withLlvmTools then [ "llvm-tools-preview" ] else [ ];
+  # The code-quality CRAP metric needs coverage too (cargo-llvm-cov +
+  # llvm-tools-preview), so the quality suite implies the coverage toolchain.
+  wantCoverage = withLlvmTools || includeQualityTools;
+
+  llvmToolsExtensions = if wantCoverage then [ "llvm-tools-preview" ] else [ ];
 
   # Use provided Rust toolchain or default from rust-toolchain.toml or stable
   defaultRustToolchain =
@@ -97,7 +101,10 @@ let
   ];
 
   # Coverage packages (optional)
-  coveragePackages = if withLlvmTools then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
+  # Single source of cargo-llvm-cov (unstable, a deliberate choice); shipped
+  # whenever coverage is wanted, so quality-tools does not re-list it and shadow
+  # this build on PATH.
+  coveragePackages = if wantCoverage then [ pkgsUnstable.cargo-llvm-cov ] else [ ];
 
   # CI/CD packages
   ciPackages = if includeCiPackages then ciTools.mkPackages pkgs else [ ];
