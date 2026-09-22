@@ -41,21 +41,30 @@ rec {
   #
   # Arguments:
   #   cargoAudit: Optional cargo-audit package (defaults to unstable, since the new advisory DB entries require at least version 0.22)
+  #   rustToolchain: Deprecated, ignored
+  #   rustToolchainFile: Deprecated, ignored
   #
   # No Rust toolchain: cargo-audit only reads Cargo.lock (closure ~300 MiB instead of ~2 GiB).
   mkAuditApp =
     {
       cargoAudit ? pkgsUnstable.cargo-audit,
+      # deprecated, ignored: cargo-audit reads only Cargo.lock
+      rustToolchain ? null,
+      rustToolchainFile ? null,
     }:
-    flake-utils.lib.mkApp {
-      drv = pkgs.writeShellApplication {
-        name = "audit";
-        runtimeInputs = [ cargoAudit ];
-        text = ''
-          cargo-audit audit "$@"
-        '';
-      };
-    };
+    pkgs.lib.warnIf (rustToolchain != null || rustToolchainFile != null)
+      "mkAuditApp: rustToolchain/rustToolchainFile are ignored, cargo-audit needs no toolchain"
+      (
+        flake-utils.lib.mkApp {
+          drv = pkgs.writeShellApplication {
+            name = "audit";
+            runtimeInputs = [ cargoAudit ];
+            text = ''
+              cargo-audit audit "$@"
+            '';
+          };
+        }
+      );
 
   # Find an available port for CI testing
   # Used to avoid port conflicts in parallel CI runs
