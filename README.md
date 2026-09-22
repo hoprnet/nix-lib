@@ -378,16 +378,14 @@ apps.check = lib.mkCheckApp { system = "x86_64-linux"; };
 
 #### `mkAuditApp`
 
-Create a cargo audit app for security scanning. Supports custom toolchains.
+Create a cargo audit app for security scanning. Only needs `Cargo.lock`, so it
+ships no Rust toolchain.
 
 ```nix
-# Basic usage
 apps.audit = lib.mkAuditApp { };
 
-# With custom toolchain file
-apps.audit = lib.mkAuditApp {
-  rustToolchainFile = ./rust-toolchain.toml;
-};
+# Pin a specific cargo-audit package
+apps.audit = lib.mkAuditApp { cargoAudit = pkgs.cargo-audit; };
 ```
 
 ### Documentation

@@ -40,34 +40,19 @@ rec {
   # Run cargo audit for security vulnerability checking
   #
   # Arguments:
-  #   rustToolchain: Optional Rust toolchain derivation
-  #   rustToolchainFile: Optional path to rust-toolchain.toml
   #   cargoAudit: Optional cargo-audit package (defaults to unstable, since the new advisory DB entries require at least version 0.22)
+  #
+  # No Rust toolchain: cargo-audit only reads Cargo.lock (closure ~300 MiB instead of ~2 GiB).
   mkAuditApp =
     {
-      rustToolchain ? null,
-      rustToolchainFile ? null,
       cargoAudit ? pkgsUnstable.cargo-audit,
     }:
-    let
-      # Use provided Rust toolchain or default from rust-toolchain.toml or stable Rust
-      selectedRust =
-        if rustToolchain != null then
-          rustToolchain
-        else if rustToolchainFile != null then
-          pkgsUnstable.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile
-        else
-          pkgsUnstable.rust-bin.stable.latest.default;
-    in
     flake-utils.lib.mkApp {
       drv = pkgs.writeShellApplication {
         name = "audit";
-        runtimeInputs = [
-          selectedRust
-          cargoAudit
-        ];
+        runtimeInputs = [ cargoAudit ];
         text = ''
-          cargo audit
+          cargo-audit audit "$@"
         '';
       };
     };
