@@ -533,9 +533,7 @@ Quick example:
 
         apps = {
           # Security audit
-          audit = lib.mkAuditApp {
-            rustToolchainFile = ./rust-toolchain.toml;
-          };
+          audit = lib.mkAuditApp { };
         };
 
         devShells.default = lib.mkDevShell {
