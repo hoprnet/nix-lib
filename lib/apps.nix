@@ -40,37 +40,31 @@ rec {
   # Run cargo audit for security vulnerability checking
   #
   # Arguments:
-  #   rustToolchain: Optional Rust toolchain derivation
-  #   rustToolchainFile: Optional path to rust-toolchain.toml
   #   cargoAudit: Optional cargo-audit package (defaults to unstable, since the new advisory DB entries require at least version 0.22)
+  #   rustToolchain: Deprecated, ignored
+  #   rustToolchainFile: Deprecated, ignored
+  #
+  # No Rust toolchain: cargo-audit only reads Cargo.lock (closure ~300 MiB instead of ~2 GiB).
   mkAuditApp =
     {
+      cargoAudit ? pkgsUnstable.cargo-audit,
+      # deprecated, ignored: cargo-audit reads only Cargo.lock
       rustToolchain ? null,
       rustToolchainFile ? null,
-      cargoAudit ? pkgsUnstable.cargo-audit,
     }:
-    let
-      # Use provided Rust toolchain or default from rust-toolchain.toml or stable Rust
-      selectedRust =
-        if rustToolchain != null then
-          rustToolchain
-        else if rustToolchainFile != null then
-          pkgsUnstable.pkgsBuildHost.rust-bin.fromRustupToolchainFile rustToolchainFile
-        else
-          pkgsUnstable.rust-bin.stable.latest.default;
-    in
-    flake-utils.lib.mkApp {
-      drv = pkgs.writeShellApplication {
-        name = "audit";
-        runtimeInputs = [
-          selectedRust
-          cargoAudit
-        ];
-        text = ''
-          cargo audit
-        '';
-      };
-    };
+    pkgs.lib.warnIf (rustToolchain != null || rustToolchainFile != null)
+      "mkAuditApp: rustToolchain/rustToolchainFile are ignored, cargo-audit needs no toolchain"
+      (
+        flake-utils.lib.mkApp {
+          drv = pkgs.writeShellApplication {
+            name = "audit";
+            runtimeInputs = [ cargoAudit ];
+            text = ''
+              cargo-audit audit "$@"
+            '';
+          };
+        }
+      );
 
   # Find an available port for CI testing
   # Used to avoid port conflicts in parallel CI runs
