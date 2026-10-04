@@ -225,7 +225,16 @@
                 pkgs.runCommand "check-dev-shell-ci-packages-disabled" { } ''
                   touch "$out"
                 '';
-            };
+            }
+            // (import ./lib/rust-builder-tests.nix {
+              inherit
+                libForSystem
+                nixpkgs
+                pkgs
+                system
+                rust-overlay
+                ;
+            });
           };
 
         flake = {

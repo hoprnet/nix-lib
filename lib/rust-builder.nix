@@ -40,16 +40,24 @@ let
     else
       system;
 
-  pkgs = import nixpkgs {
-    inherit localSystem crossSystem;
-    overlays = [
-      rust-overlay.overlays.default
-    ];
-  };
+  # Native musl packages provide cached compilers when the CPU architecture matches.
+  useNativeMusl =
+    isStatic && localSystem.isLinux && crossSystem.isMusl && localSystem.system == crossSystem.system;
+
+  pkgs =
+    if useNativeMusl then
+      (pkgsLocal.pkgsMusl // { inherit (pkgsLocal) pkgsStatic pkgsBuildHost; })
+    else
+      import nixpkgs {
+        inherit localSystem crossSystem;
+        overlays = [
+          rust-overlay.overlays.default
+        ];
+      };
 
   # `buildPlatform` is the local host platform
   # `hostPlatform` is the cross-compilation output platform
-  buildPlatform = pkgs.stdenv.buildPlatform;
+  buildPlatform = pkgsLocal.stdenv.buildPlatform;
   hostPlatform = pkgs.stdenv.hostPlatform;
 
   envCase = triple: pkgsLocal.lib.strings.toUpper (builtins.replaceStrings [ "-" ] [ "_" ] triple);
@@ -81,7 +89,16 @@ let
         extensions = llvmToolsExtensions;
       };
 
-  craneLibBase = (crane.mkLib pkgs).overrideToolchain rustToolchainFun;
+  # Rust build scripts and proc-macros run with the build host's libc.
+  craneLibBase =
+    ((crane.mkLib (if useNativeMusl then pkgsLocal else pkgs)).overrideToolchain rustToolchainFun)
+    .overrideScope
+      (
+        _final: _prev:
+        pkgsLocal.lib.optionalAttrs useNativeMusl {
+          stdenvSelector = _: pkgs.stdenv;
+        }
+      );
 
   # When llvm-tools are enabled (for coverage), override cargo-llvm-cov to use
   # the version from nixpkgs-unstable, as the release channel may have it
@@ -104,8 +121,15 @@ let
 
   buildEnvBase = {
     CARGO_BUILD_TARGET = cargoTarget;
-    "CARGO_TARGET_${envCase cargoTarget}_LINKER" = "${pkgs.stdenv.cc.targetPrefix}cc";
-    HOST_CC = "${pkgs.stdenv.cc.nativePrefix}cc";
+    "CARGO_TARGET_${envCase cargoTarget}_LINKER" =
+      if useNativeMusl then "${pkgs.stdenv.cc}/bin/cc" else "${pkgs.stdenv.cc.targetPrefix}cc";
+    HOST_CC =
+      if useNativeMusl then "${pkgsLocal.stdenv.cc}/bin/cc" else "${pkgs.stdenv.cc.nativePrefix}cc";
+  }
+  // pkgsLocal.lib.optionalAttrs useNativeMusl {
+    "CARGO_TARGET_${envCase buildHostTarget}_LINKER" = "${pkgsLocal.stdenv.cc}/bin/cc";
+    "CC_${builtins.replaceStrings [ "-" ] [ "_" ] cargoTarget}" = "${pkgs.stdenv.cc}/bin/cc";
+    "CXX_${builtins.replaceStrings [ "-" ] [ "_" ] cargoTarget}" = "${pkgs.stdenv.cc}/bin/c++";
   };
   buildEnvCross =
     if isCross then
@@ -168,14 +192,27 @@ in
   callPackage = (
     package: args:
     let
-      crate = pkgs.callPackage package (
+      # Build tools run on the glibc host; target libraries and the compiler use musl.
+      packageCall =
+        if useNativeMusl then
+          pkgs.newScope {
+            inherit pkgs;
+            inherit (pkgsLocal)
+              llvmPackages
+              pkg-config
+              libiconv
+              mold
+              makeSetupHook
+              html-tidy
+              pandoc
+              ;
+          }
+        else
+          pkgs.callPackage;
+      crate = packageCall package (
         args
         // {
-          inherit
-            craneLib
-            isCross
-            isStatic
-            ;
+          inherit craneLib isCross isStatic;
         }
       );
     in
