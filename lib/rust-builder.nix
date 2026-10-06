@@ -44,16 +44,22 @@ let
   useNativeMusl =
     isStatic && localSystem.isLinux && crossSystem.isMusl && localSystem.system == crossSystem.system;
 
-  pkgs =
-    if useNativeMusl then
-      (pkgsLocal.pkgsMusl // { inherit (pkgsLocal) pkgsStatic pkgsBuildHost; })
-    else
-      import nixpkgs {
-        inherit localSystem crossSystem;
-        overlays = [
-          rust-overlay.overlays.default
-        ];
-      };
+  pkgs = import nixpkgs (
+    {
+      inherit localSystem crossSystem;
+      overlays = [ rust-overlay.overlays.default ];
+    }
+    // pkgsLocal.lib.optionalAttrs useNativeMusl {
+      crossOverlays = [
+        (_final: prev: {
+          stdenv = prev.overrideCC prev.stdenv pkgsLocal.pkgsMusl.stdenv.cc;
+          # Compiler wrappers must use the cached libc paired with the native compiler.
+          musl = pkgsLocal.pkgsMusl.musl;
+          pkgsStatic = pkgsLocal.pkgsStatic;
+        })
+      ];
+    }
+  );
 
   # `buildPlatform` is the local host platform
   # `hostPlatform` is the cross-compilation output platform
@@ -90,15 +96,7 @@ let
       };
 
   # Rust build scripts and proc-macros run with the build host's libc.
-  craneLibBase =
-    ((crane.mkLib (if useNativeMusl then pkgsLocal else pkgs)).overrideToolchain rustToolchainFun)
-    .overrideScope
-      (
-        _final: _prev:
-        pkgsLocal.lib.optionalAttrs useNativeMusl {
-          stdenvSelector = _: pkgs.stdenv;
-        }
-      );
+  craneLibBase = (crane.mkLib pkgs).overrideToolchain rustToolchainFun;
 
   # When llvm-tools are enabled (for coverage), override cargo-llvm-cov to use
   # the version from nixpkgs-unstable, as the release channel may have it
@@ -173,15 +171,6 @@ let
         "${envCase buildHostTarget}_OPENSSL_LIB_DIR" = "${buildHostOpenssl.out}/lib";
         "${envCase buildHostTarget}_OPENSSL_INCLUDE_DIR" = "${buildHostOpenssl.dev}/include";
       }
-      // (
-        if buildHostTarget != cargoTarget then
-          {
-            "${envCase buildHostTarget}_OPENSSL_LIB_DIR" = "${buildHostOpenssl.out}/lib";
-            "${envCase buildHostTarget}_OPENSSL_INCLUDE_DIR" = "${buildHostOpenssl.dev}/include";
-          }
-        else
-          { }
-      )
     else
       { };
 
@@ -192,24 +181,9 @@ in
   callPackage = (
     package: args:
     let
-      # Build tools run on the glibc host; target libraries and the compiler use musl.
-      packageCall =
-        if useNativeMusl then
-          pkgs.newScope {
-            inherit pkgs;
-            inherit (pkgsLocal)
-              llvmPackages
-              pkg-config
-              libiconv
-              mold
-              makeSetupHook
-              html-tidy
-              pandoc
-              ;
-          }
-        else
-          pkgs.callPackage;
-      crate = packageCall package (
+      # Nixpkgs splices build tools for the build platform and libraries for the host platform.
+
+      crate = pkgs.callPackage package (
         args
         // {
           inherit craneLib isCross isStatic;
