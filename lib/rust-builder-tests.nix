@@ -24,20 +24,39 @@ let
         llvmPackages,
         pkgs,
         openssl,
+        cmake,
+        protobuf,
       }:
-      stdenv.mkDerivation {
-        name = "rust-builder-platform-check";
+      craneLib.mkCargoDerivation {
+        pname = "rust-builder-platform-check";
+        version = "1.0.0";
         dontUnpack = true;
-        installPhase = ''touch "$out"'';
+        buildPhaseCargoCommand = "";
+        installPhaseCommand = ''touch "$out"'';
+        cargoVendorDir = pkgs.emptyDirectory;
         cargoArtifacts = null;
+        nativeBuildInputs = [
+          cmake
+          protobuf
+          llvmPackages.llvm
+        ];
+        buildInputs = [ openssl ];
         passthru = {
           compiler = stdenv.cc.cc.outPath;
-          toolchain = craneLib.rustc.drvPath;
-          buildLlvm = llvmPackages.llvm.outPath;
           staticCompiler = pkgs.pkgsStatic.stdenv.cc.cc.outPath;
           hostOpenssl = pkgs.pkgsBuildHost.openssl.outPath;
-          namedOpenssl = openssl.outPath;
+          namedOpensslHost = openssl.stdenv.hostPlatform.config;
           host = stdenv.hostPlatform.config;
+          build = stdenv.buildPlatform.config;
+          buildPackagesHost = pkgs.buildPackages.stdenv.hostPlatform.config;
+          buildBuildHost = pkgs.pkgsBuildBuild.stdenv.hostPlatform.config;
+          buildHostHost = pkgs.pkgsBuildHost.stdenv.hostPlatform.config;
+          downloadHost =
+            (craneLib.downloadCargoPackage {
+              name = "platform-probe";
+              version = "1.0.0";
+              checksum = pkgs.lib.fakeSha256;
+            }).stdenv.hostPlatform.config;
           inherit isCross isStatic;
         };
       }
@@ -51,35 +70,60 @@ let
         targets = [ expectedTarget ];
         extensions = [ ];
       };
+      hasNativeInput = input: lib.any (dep: dep.drvPath == input.drvPath) result.nativeBuildInputs;
+      hostTarget = local.stdenv.hostPlatform.config;
     in
     {
       expr = {
         inherit (result)
           compiler
-          toolchain
           host
           isStatic
-          buildLlvm
           staticCompiler
           hostOpenssl
+          build
+          buildPackagesHost
+          buildBuildHost
+          buildHostHost
+          downloadHost
+          namedOpensslHost
+          name
           ;
+        nativeRust = lib.any (
+          dep:
+          (dep.pname or "") == rust.pname
+          && dep.version == rust.version
+          && dep.stdenv.hostPlatform.config == hostTarget
+        ) result.nativeBuildInputs;
+        nativeLlvm = hasNativeInput local.llvmPackages.llvm;
+        nativeCmake = hasNativeInput local.cmake;
+        nativeProtobuf = hasNativeInput local.protobuf;
+        targetOpenssl = lib.any (dep: dep.stdenv.hostPlatform.config == expectedTarget) result.buildInputs;
         staticFlag = lib.hasInfix "+crt-static" result.CARGO_BUILD_RUSTFLAGS;
         targetCC = result."CC_${builtins.replaceStrings [ "-" ] [ "_" ] expectedTarget}";
-        namedOpenssl = result.namedOpenssl;
         targetCXX = result."CXX_${builtins.replaceStrings [ "-" ] [ "_" ] expectedTarget}";
         hostCC = result.HOST_CC;
       };
       expected = {
         compiler = local.pkgsMusl.stdenv.cc.cc.outPath;
-        toolchain = rust.drvPath;
-        buildLlvm = local.llvmPackages.llvm.outPath;
+        nativeRust = true;
+        nativeLlvm = true;
+        nativeCmake = true;
+        nativeProtobuf = true;
+        targetOpenssl = true;
         staticCompiler = local.pkgsStatic.stdenv.cc.cc.outPath;
         hostOpenssl = local.pkgsBuildHost.openssl.outPath;
         host = expectedTarget;
+        build = hostTarget;
+        buildPackagesHost = hostTarget;
+        buildBuildHost = hostTarget;
+        buildHostHost = hostTarget;
+        downloadHost = hostTarget;
+        namedOpensslHost = expectedTarget;
+        name = "rust-builder-platform-check-${expectedTarget}-1.0.0";
         isStatic = true;
         staticFlag = true;
         targetCC = "${local.pkgsMusl.stdenv.cc}/bin/cc";
-        namedOpenssl = local.pkgsMusl.openssl.outPath;
         targetCXX = "${local.pkgsMusl.stdenv.cc}/bin/c++";
         hostCC = "${local.stdenv.cc}/bin/cc";
       };
@@ -139,13 +183,48 @@ let
     rev = "musl-builder-test";
   };
   binary = nativeBuilder.callPackage project.mkRustPackage packageArgs;
+  fixturePkgs = packageSet system;
+  fixtureArgs = {
+    src = project.mkSrc {
+      root = ../tests/rust-builder-native;
+      fs = lib.fileset;
+      extraExtensions = [ "c" ];
+    };
+    depsSrc = project.mkDepsSrc {
+      root = ../tests/rust-builder-native;
+      fs = lib.fileset;
+    };
+    cargoToml = ../tests/rust-builder-native/Cargo.toml;
+  };
+  fixtureEnv = {
+    EXPECTED_HOST_CC = "${fixturePkgs.stdenv.cc}/bin/cc";
+    EXPECTED_TARGET_CC = "${fixturePkgs.pkgsMusl.stdenv.cc}/bin/cc";
+    EXPECTED_TARGET_CXX = "${fixturePkgs.pkgsMusl.stdenv.cc}/bin/c++";
+    EXPECTED_HOST_OPENSSL_LIB_DIR = "${fixturePkgs.openssl.out}/lib";
+    EXPECTED_HOST_OPENSSL_INCLUDE_DIR = "${fixturePkgs.openssl.dev}/include";
+    EXPECTED_TARGET_OPENSSL_LIB_DIR = "${fixturePkgs.pkgsStatic.openssl.out}/lib";
+    EXPECTED_TARGET_OPENSSL_INCLUDE_DIR = "${fixturePkgs.pkgsStatic.openssl.dev}/include";
+  };
+  nativePackage =
+    runTests:
+    (nativeBuilder.callPackage project.mkRustPackage (fixtureArgs // { inherit runTests; }))
+    .overrideAttrs
+      (
+        previous:
+        fixtureEnv
+        // {
+          cargoArtifacts = previous.cargoArtifacts.overrideAttrs (_: fixtureEnv);
+        }
+      );
+  nativeBinary = nativePackage false;
 in
 {
   rustBuilderUnit =
     assert lib.assertMsg (failures == [ ]) (builtins.toJSON failures);
     pkgs.runCommand "check-rust-builder-unit" { } ''touch "$out"'';
 }
-// lib.optionalAttrs pkgs.stdenv.isLinux {
+// lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+  rustBuilderNativeIntegration = nativePackage true;
   rustBuilderIntegration = binary.overrideAttrs {
     doCheck = true;
     checkPhase = ''
@@ -221,6 +300,31 @@ in
         assert info["name"] == "rust-app"
         assert info["platform"] == "linux-${pkgs.stdenv.hostPlatform.parsed.cpu.name}"
         assert "Git revision: musl-builder-test" in completed.stdout
+        PY
+        python3 - "${nativeBinary}/bin/rust-builder-native" <<'PY'
+        import struct
+        import subprocess
+        import sys
+        from pathlib import Path
+        binary = sys.argv[1]
+        header = Path(binary).read_bytes()[:20]
+        assert header[:4] == b"\x7fELF"
+        assert struct.unpack("<H", header[18:20])[0] == ${
+          if pkgs.stdenv.hostPlatform.isAarch64 then "183" else "62"
+        }
+        segments = subprocess.run(["readelf", "-l", binary], check=True, capture_output=True, text=True)
+        dynamic = subprocess.run(["readelf", "-d", binary], check=True, capture_output=True, text=True)
+        assert segments.stderr == "", segments.stderr
+        assert dynamic.stderr == "", dynamic.stderr
+        assert "INTERP" not in segments.stdout
+        assert "NEEDED" not in dynamic.stdout
+        completed = subprocess.run([binary], check=True, capture_output=True, text=True)
+        assert completed.stderr == "", completed.stderr
+        info = dict(field.split("=", 1) for field in completed.stdout.split())
+        cpu = "${pkgs.stdenv.hostPlatform.parsed.cpu.name}"
+        assert info["host"] == f"{cpu}-unknown-linux-gnu", info
+        assert info["target"] == f"{cpu}-unknown-linux-musl", info
+        assert int(info["openssl"]) > 0, info
         PY
         touch "$out"
       '';
