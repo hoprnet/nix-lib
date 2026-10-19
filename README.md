@@ -111,6 +111,13 @@ builder = lib.mkRustBuilder {
 };
 ```
 
+For static Linux builds on a matching CPU architecture, the builder reuses
+Nixpkgs' native musl compiler and libc. The package scope retains the GNU build
+platform, so Cargo build scripts, proc-macros, and tools in `nativeBuildInputs`
+run on GNU libc while target libraries use musl. Static dependencies, including
+OpenSSL, come from `pkgsStatic`. Builds for a different CPU architecture use the
+cross compiler.
+
 ### Source Filtering
 
 #### `mkSrc`
@@ -654,6 +661,22 @@ Format code:
 ```bash
 nix fmt
 ```
+
+The Rust builder checks cover platform/package splicing, Cargo build scripts and
+proc-macros, C compilation, host and target OpenSSL, and static executable
+execution. The native dependency fixture lives in
+[`tests/rust-builder-native`](tests/rust-builder-native).
+
+```bash
+nix build -L \
+  .#checks.x86_64-linux.rustBuilderUnit \
+  .#checks.x86_64-linux.rustBuilderIntegration \
+  .#checks.x86_64-linux.rustBuilderCIntegration \
+  .#checks.x86_64-linux.rustBuilderNativeIntegration \
+  .#checks.x86_64-linux.rustBuilderEndToEnd
+```
+
+Use `checks.aarch64-linux` on an ARM64 Linux builder to run the same checks.
 
 ## License
 
