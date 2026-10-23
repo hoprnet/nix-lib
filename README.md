@@ -288,6 +288,10 @@ image = lib.mkDockerImage {
 };
 ```
 
+The image ships nixpkgs `cacert` without the compromised
+`emSign ECC Root CA - G3` and sets `SSL_CERT_FILE` to it by default. Do not set
+your own `SSL_CERT_FILE` unless you need a different bundle.
+
 ### Development Shells
 
 #### `mkDevShell`
