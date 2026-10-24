@@ -21,6 +21,9 @@ let
   # Library path for essential system libraries
   libPath = pkgs.lib.makeLibraryPath [ pkgs.openssl ];
 
+  # nixpkgs cacert without the compromised emSign ECC Root CA - G3 (GHSA-6q48-6c7w-9gw2)
+  cacert = pkgs.cacert.override { blacklist = [ "emSign ECC Root CA - G3" ]; };
+
   # Default base packages included in all Docker images
   # These provide essential runtime dependencies
   defaultBasePackages = with pkgs; [
@@ -50,6 +53,7 @@ let
     "NO_COLOR=true" # suppress colored log output
     "RUST_BACKTRACE=full"
     "LD_LIBRARY_PATH=${libPath}"
+    "SSL_CERT_FILE=${cacert}/etc/ssl/certs/ca-bundle.crt"
   ];
 
   Env = defaultEnv ++ env;
