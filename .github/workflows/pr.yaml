@@ -1,0 +1,25 @@
+name: PR
+
+on:
+  pull_request:
+    # "edited" re-runs the title lint when the PR title is fixed
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  # The PR title becomes the squash commit on main, which release-tags.sh
+  # parses to derive the version bump
+  conventional-title:
+    name: Validate title
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Validate PR title against conventional commits
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          requireScope: false
