@@ -392,6 +392,16 @@ apps.audit = lib.mkAuditApp { };
 apps.audit = lib.mkAuditApp { cargoAudit = pkgs.cargo-audit; };
 ```
 
+#### `mkSemverChecksApp`
+
+Create a cargo-semver-checks app that compares the public API with the last
+release on crates.io. It needs network access, so it is an app and not a
+sandboxed flake check, and it needs a Rust toolchain for the rustdoc builds.
+
+```nix
+apps.semver-checks = lib.mkSemverChecksApp { rustToolchain = stableToolchain; };
+```
+
 ### Documentation
 
 #### `mkManPage`
