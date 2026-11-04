@@ -24,6 +24,9 @@
   pkgs, # Nixpkgs package set
   rev ? "unknown", # Git revision for version tracking
   runClippy ? false, # Whether to run Clippy linter
+  runDoc ? false, # Whether to build rustdoc with warnings denied
+  runDeny ? false, # Whether to run cargo-deny instead of building
+  denyChecks ? "bans licenses sources", # cargo-deny checks; advisories need network, use mkAuditApp
   runTests ? false, # Whether to run tests
   testCargoProfile ? "test", # Cargo profile used by test mode
   src, # Source tree
@@ -54,7 +57,7 @@ let
   actualCargoProfile =
     if runTests then
       testCargoProfile
-    else if runClippy then
+    else if runClippy || runDoc then
       "dev"
     else
       CARGO_PROFILE;
@@ -150,6 +153,13 @@ let
         cargoClippyExtraArgs = "-- -Dwarnings";
         doInstallCargoArtifacts = false;
       }
+    else if runDoc then
+      sharedArgsBase
+      // {
+        cargoDocExtraArgs = "--no-deps";
+        RUSTDOCFLAGS = "-D warnings";
+        doInstallCargoArtifacts = false;
+      }
     else
       sharedArgsBase;
 
@@ -167,7 +177,7 @@ let
       buildPhaseCargoCommand = "";
       cargoTestExtraArgs = "--no-run --lib";
     }
-    // lib.optionalAttrs runClippy {
+    // lib.optionalAttrs (runClippy || runDoc) {
       buildPhaseCargoCommand = "cargoWithProfile check ${sharedArgs.cargoExtraArgs}";
     };
 
@@ -182,30 +192,40 @@ let
       craneLib.cargoTest
     else if runClippy then
       craneLib.cargoClippy
+    else if runDoc then
+      craneLib.cargoDoc
     else
       craneLib.buildPackage;
 in
-builder (
-  args
-  // {
+# cargo-deny reads only Cargo.lock and deny.toml, so it skips the dependency build.
+if runDeny then
+  craneLib.cargoDeny {
+    inherit pname version;
     inherit src;
-
-    preConfigure = ''
-      # respect the amount of available cores for building
-      export CARGO_BUILD_JOBS=$NIX_BUILD_CORES
-    '';
-
-    # Library crates don't produce executables, so `cargo install` would fail.
-    # Instead, copy the compiled .rlib and .a artifacts to $out/lib/.
-    #
-    # Cargo uses underscores in artifact filenames regardless of the crate name
-    # (e.g. crate "my-lib" produces "libmy_lib-<hash>.rlib").
-    installPhaseCommand = ''
-      mkdir -p $out/lib
-      find target -type f \
-        \( -name "lib${pnameUnderscore}*.rlib" -o -name "lib${pnameUnderscore}*.a" \) \
-        ! -path "*/incremental/*" \
-        -exec cp -n {} "$out/lib/" \;
-    '';
+    cargoDenyChecks = denyChecks;
   }
-)
+else
+  builder (
+    args
+    // {
+      inherit src;
+
+      preConfigure = ''
+        # respect the amount of available cores for building
+        export CARGO_BUILD_JOBS=$NIX_BUILD_CORES
+      '';
+
+      # Library crates don't produce executables, so `cargo install` would fail.
+      # Instead, copy the compiled .rlib and .a artifacts to $out/lib/.
+      #
+      # Cargo uses underscores in artifact filenames regardless of the crate name
+      # (e.g. crate "my-lib" produces "libmy_lib-<hash>.rlib").
+      installPhaseCommand = ''
+        mkdir -p $out/lib
+        find target -type f \
+          \( -name "lib${pnameUnderscore}*.rlib" -o -name "lib${pnameUnderscore}*.a" \) \
+          ! -path "*/incremental/*" \
+          -exec cp -n {} "$out/lib/" \;
+      '';
+    }
+  )
