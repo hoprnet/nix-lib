@@ -175,7 +175,8 @@ let
     }
     // lib.optionalAttrs runTests {
       buildPhaseCargoCommand = "";
-      cargoTestExtraArgs = "--no-run --lib";
+      # --lib already comes from cargoExtraArgs; cargo rejects a second one
+      cargoTestExtraArgs = "--no-run";
     }
     // lib.optionalAttrs (runClippy || runDoc) {
       buildPhaseCargoCommand = "cargoWithProfile check ${sharedArgs.cargoExtraArgs}";
