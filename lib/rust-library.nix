@@ -197,7 +197,7 @@ let
     else
       craneLib.buildPackage;
 in
-# cargo-deny reads only Cargo.lock and deny.toml, so it skips the dependency build.
+# cargo deny check compiles nothing, so it needs no cargo artifacts and skips the dependency build.
 if runDeny then
   craneLib.cargoDeny {
     inherit pname version;
