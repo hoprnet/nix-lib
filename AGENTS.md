@@ -121,6 +121,8 @@ The library is organized as a flake that exposes functions through
 
 - **mkCheckApp**: Runs nix flake checks
 - **mkAuditApp**: Runs cargo-audit for security scanning
+- **mkSemverChecksApp**: Runs cargo-semver-checks against the last published
+  release
 - **mkFindPortApp**: Finds available ports for CI testing
 - **mkUpdateGithubLabelsApp**: Updates GitHub labels based on crate structure
 
