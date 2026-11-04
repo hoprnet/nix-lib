@@ -6,7 +6,7 @@
 
 {
   pkgs,
-  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-llvm-cov)
+  pkgsUnstable ? pkgs, # Unstable nixpkgs (used for cargo-audit, cargo-deny, cargo-semver-checks, cargo-llvm-cov)
   crane,
   ciTools,
   qualityTools ? null, # Code-quality metric tools (see quality-tools.nix)
@@ -99,8 +99,12 @@ let
     time
     which
 
-    # Rust tooling (cargo-audit from unstable for latest advisory support)
+    # Rust tooling (cargo-audit and cargo-deny from unstable for latest
+    # advisory support; cargo-semver-checks from unstable to track recent
+    # rustdoc JSON formats)
     pkgsUnstable.cargo-audit
+    pkgsUnstable.cargo-deny
+    pkgsUnstable.cargo-semver-checks
   ];
 
   # Coverage packages (optional)
