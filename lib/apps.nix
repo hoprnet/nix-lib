@@ -66,6 +66,37 @@ rec {
         }
       );
 
+  # Check the public API against the last published release with cargo-semver-checks
+  #
+  # The baseline comes from crates.io, so this needs network access and is an app,
+  # not a sandboxed flake check. It builds rustdoc JSON for both versions, so unlike
+  # mkAuditApp it needs a Rust toolchain.
+  #
+  # Arguments:
+  #   rustToolchain: Rust toolchain used for the rustdoc builds (defaults to latest stable)
+  #   cargoSemverChecks: Optional cargo-semver-checks package (defaults to unstable, to track recent rustdoc JSON formats)
+  mkSemverChecksApp =
+    {
+      rustToolchain ? pkgs.rust-bin.stable.latest.default,
+      cargoSemverChecks ? pkgsUnstable.cargo-semver-checks,
+    }:
+    flake-utils.lib.mkApp {
+      drv = pkgs.writeShellApplication {
+        name = "semver-checks";
+        runtimeInputs = [
+          rustToolchain
+          cargoSemverChecks
+          pkgs.pkg-config
+          pkgs.openssl
+        ];
+        # No setup hooks run here, so point pkg-config at openssl for crates using openssl-sys
+        text = ''
+          export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          cargo semver-checks "$@"
+        '';
+      };
+    };
+
   # Find an available port for CI testing
   # Used to avoid port conflicts in parallel CI runs
   #

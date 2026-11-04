@@ -278,6 +278,7 @@ rec {
   inherit (apps)
     mkCheckApp
     mkAuditApp
+    mkSemverChecksApp
     mkFindPortApp
     mkUpdateGithubLabelsApp
     ;
