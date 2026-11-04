@@ -99,8 +99,9 @@ let
     time
     which
 
-    # Rust tooling (cargo-audit from unstable for latest advisory support;
-    # cargo-semver-checks from unstable to track recent rustdoc JSON formats)
+    # Rust tooling (cargo-audit and cargo-deny from unstable for latest
+    # advisory support; cargo-semver-checks from unstable to track recent
+    # rustdoc JSON formats)
     pkgsUnstable.cargo-audit
     pkgsUnstable.cargo-deny
     pkgsUnstable.cargo-semver-checks
