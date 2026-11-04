@@ -89,7 +89,9 @@ rec {
           pkgs.pkg-config
           pkgs.openssl
         ];
+        # No setup hooks run here, so point pkg-config at openssl for crates using openssl-sys
         text = ''
+          export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
           cargo semver-checks "$@"
         '';
       };

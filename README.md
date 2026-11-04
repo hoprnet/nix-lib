@@ -399,7 +399,11 @@ release on crates.io. It needs network access, so it is an app and not a
 sandboxed flake check, and it needs a Rust toolchain for the rustdoc builds.
 
 ```nix
-apps.semver-checks = lib.mkSemverChecksApp { rustToolchain = stableToolchain; };
+# With the default toolchain (latest stable)
+apps.semver-checks = lib.mkSemverChecksApp { };
+
+# Or with a specific toolchain
+apps.semver-checks = lib.mkSemverChecksApp { rustToolchain = pkgs.rust-bin.stable.latest.default; };
 ```
 
 ### Documentation
