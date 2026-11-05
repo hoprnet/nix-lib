@@ -5,6 +5,8 @@ on:
     branches:
       - main
 
+permissions: {}
+
 # Tag pushes must not race when merges land back-to-back
 concurrency:
   group: release-tags

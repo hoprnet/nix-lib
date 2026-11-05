@@ -5,8 +5,11 @@ on:
     # "edited" re-runs the title lint when the PR title is fixed
     types: [opened, edited, reopened, synchronize]
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: ${{ github.event.pull_request.number || github.ref }}-pr
+  cancel-in-progress: true
 
 jobs:
   # The PR title becomes the squash commit on main, which release-tags.sh
@@ -23,3 +26,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           requireScope: false
+
+  # Single required check for the branch ruleset. `if: always()` runs it even
+  # when a dependency fails; alls-green reds the gate on any non-success.
+  merge-gate:
+    name: Merge gate
+    if: always()
+    needs:
+      - conventional-title
+    runs-on: depot-ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Require all jobs pass
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
