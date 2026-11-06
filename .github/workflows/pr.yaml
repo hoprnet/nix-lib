@@ -4,15 +4,23 @@ on:
   pull_request:
     # "edited" re-runs the title lint when the PR title is fixed
     types: [opened, edited, reopened, synchronize]
+  # Kept from the former nix-checks.yaml: flake checks also run on main
+  push:
+    branches:
+      - main
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: ${{ github.event.pull_request.number || github.ref }}-pr
+  cancel-in-progress: true
 
 jobs:
   # The PR title becomes the squash commit on main, which release-tags.sh
   # parses to derive the version bump
   conventional-title:
     name: Validate title
+    if: github.event_name == 'pull_request'
     runs-on: depot-ubuntu-24.04
     permissions:
       pull-requests: read
@@ -23,3 +31,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           requireScope: false
+
+  flake-check:
+    name: Run flake checks
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Run nix flake check
+        uses: hoprnet/hopr-workflows/actions/nix-action@ff4c0b7afc400ee6cf217841dc576f8a1289bcc0 # nix-action-v1
+        with:
+          source_branch: ${{ github.head_ref || github.ref_name }}
+          cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          command: nix flake check -L
+
+  # Single required check for the branch ruleset. `if: always()` runs it even
+  # when a dependency fails; alls-green reds the gate on any non-success.
+  merge-gate:
+    name: Merge gate
+    if: always()
+    needs:
+      - conventional-title
+      - flake-check
+    runs-on: depot-ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Require all jobs pass
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
+          # Validate title runs on pull_request only
+          allowed-skips: ${{ github.event_name != 'pull_request' && 'conventional-title' || '' }}
