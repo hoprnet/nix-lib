@@ -50,8 +50,7 @@ jobs:
   # when a dependency fails; alls-green reds the gate on any non-success.
   merge-gate:
     name: Merge gate
-    # PR-only: on push to main there is no PR to gate
-    if: always() && github.event_name == 'pull_request'
+    if: always()
     needs:
       - conventional-title
       - flake-check
@@ -62,3 +61,5 @@ jobs:
         uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}
+          # Validate title runs on pull_request only
+          allowed-skips: ${{ github.event_name != 'pull_request' && 'conventional-title' || '' }}
