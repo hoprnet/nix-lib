@@ -1,0 +1,11 @@
+[package]
+name = "rust-builder-native"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openssl-sys = "0.9"
+
+[build-dependencies]
+cc = "1.4.7"
+openssl = "0.10"

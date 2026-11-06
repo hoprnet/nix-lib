@@ -70,7 +70,9 @@ The library is organized as a flake that exposes functions through
   supported platforms (local, localNightly, x86_64-linux, aarch64-linux,
   x86_64-darwin, aarch64-darwin)
 - **Cross-compilation**: Uses nixpkgs cross-compilation with musl for static
-  Linux binaries
+  Linux binaries. Matching Linux CPU architectures reuse the native musl
+  compiler and libc while preserving the GNU build platform and package
+  splicing. Static dependencies come from the cached static package set.
 - **Toolchain support**: Can use rust-toolchain.toml, nightly toolchain, or
   stable
 - **Builder pattern**: Each builder has a `callPackage` method that wraps
