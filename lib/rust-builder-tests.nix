@@ -72,6 +72,7 @@ let
       };
       hasNativeInput = input: lib.any (dep: dep.drvPath == input.drvPath) result.nativeBuildInputs;
       hostTarget = local.stdenv.hostPlatform.config;
+      opensslEnv = lib.toUpper (builtins.replaceStrings [ "-" ] [ "_" ] expectedTarget) + "_OPENSSL";
     in
     {
       expr = {
@@ -98,7 +99,9 @@ let
         nativeLlvm = hasNativeInput local.llvmPackages.llvm;
         nativeCmake = hasNativeInput local.cmake;
         nativeProtobuf = hasNativeInput local.protobuf;
-        targetOpenssl = lib.any (dep: dep.stdenv.hostPlatform.config == expectedTarget) result.buildInputs;
+        # The builder selects the target OpenSSL through these paths, not through buildInputs.
+        targetOpensslLib = result."${opensslEnv}_LIB_DIR";
+        targetOpensslInclude = result."${opensslEnv}_INCLUDE_DIR";
         staticFlag = lib.hasInfix "+crt-static" result.CARGO_BUILD_RUSTFLAGS;
         targetCC = result."CC_${builtins.replaceStrings [ "-" ] [ "_" ] expectedTarget}";
         targetCXX = result."CXX_${builtins.replaceStrings [ "-" ] [ "_" ] expectedTarget}";
@@ -110,7 +113,8 @@ let
         nativeLlvm = true;
         nativeCmake = true;
         nativeProtobuf = true;
-        targetOpenssl = true;
+        targetOpensslLib = "${local.pkgsStatic.openssl.out}/lib";
+        targetOpensslInclude = "${local.pkgsStatic.openssl.dev}/include";
         staticCompiler = local.pkgsStatic.stdenv.cc.cc.outPath;
         hostOpenssl = local.pkgsBuildHost.openssl.outPath;
         host = expectedTarget;
