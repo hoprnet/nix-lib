@@ -32,6 +32,7 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
 
     # Input dependency optimization
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
