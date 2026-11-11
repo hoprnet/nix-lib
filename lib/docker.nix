@@ -21,8 +21,18 @@ let
   # Library path for essential system libraries
   libPath = pkgs.lib.makeLibraryPath [ pkgs.openssl ];
 
-  # nixpkgs cacert without the compromised emSign ECC Root CA - G3 (GHSA-6q48-6c7w-9gw2)
-  cacert = pkgs.cacert.override { blacklist = [ "emSign ECC Root CA - G3" ]; };
+  # CA bundle for SSL verification.
+  # Mozilla removed emSign ECC Root CA - G3 from certdata.txt in nss-cacert >= 3.128
+  # (including release-26.05's nss-cacert 3.131.1). Passing a blacklist override for it
+  # on newer versions fails buildcatrust assertion checks (exit code 3: cert in blocklist
+  # but not in cert store). For older nixpkgs pins (< 3.128) where the compromised root
+  # is still present, we apply the blacklist override; for newer pins, stock pkgs.cacert
+  # already excludes it.
+  cacert =
+    if (builtins.compareVersions (pkgs.cacert.version or "0") "3.128") < 0 then
+      pkgs.cacert.override { blacklist = [ "emSign ECC Root CA - G3" ]; }
+    else
+      pkgs.cacert;
 
   # Default base packages included in all Docker images
   # These provide essential runtime dependencies
