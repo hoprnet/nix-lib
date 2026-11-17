@@ -35,18 +35,23 @@ if [[ ! -f $bundle ]]; then
 fi
 shift || true
 
+# Nixpkgs' bash has no progcomp, so do not use compgen.
+shopt -s nullglob
 trust_sources=("$@")
 if [[ ${#trust_sources[@]} -eq 0 ]]; then
-  while IFS= read -r path; do
+  for path in /nix/store/*-nss-cacert-*-p11kit/etc/ssl/trust-source/ca-bundle.trust.p11-kit; do
     trust_sources+=("$path")
-  done < <(compgen -G '/nix/store/*-nss-cacert-*-p11kit/etc/ssl/trust-source/ca-bundle.trust.p11-kit' || true)
+  done
 fi
 if [[ ${#trust_sources[@]} -eq 0 ]]; then
   echo "FAIL: no p11-kit trust source found" >&2
   exit 1
 fi
 
-tmp="$(mktemp -d)"
+# The audit image has no /tmp, so fall back to the working directory.
+if ! tmp="$(mktemp -d 2>/dev/null)"; then
+  tmp="$(mktemp -d "${PWD:?}/check-docker-trust-store.XXXXXX")"
+fi
 trap 'rm -rf "$tmp"' EXIT
 
 failed=0
@@ -80,7 +85,6 @@ awk -v dir="$tmp/bundle" '
   n { print > file }
 ' "$bundle"
 
-shopt -s nullglob
 bundle_count=0
 bundle_failed=0
 for cert in "$tmp/bundle"/*.pem; do
