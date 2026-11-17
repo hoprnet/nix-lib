@@ -93,6 +93,9 @@
           }:
           let
             lib = libForSystem system;
+            dockerTrustStoreCheckScript = pkgs.writeShellScriptBin "check-docker-trust-store" (
+              builtins.readFile ./scripts/check-docker-trust-store.sh
+            );
             ciToolNames = lib.ciTools.names;
             devShellWithCi = lib.mkDevShell { };
             devShellWithoutCi = lib.mkDevShell {
@@ -118,13 +121,52 @@
             # Skopeo wrapper that ensures ~/.config/containers/registries.conf is in v2 format.
             # Ubuntu 22.04/24.04 runners ship a v1 file that newer skopeo rejects.
             # Usage in CI: nix shell github:hoprnet/nix-lib#skopeo -c bash
-            packages.skopeo = pkgs.writeShellScriptBin "skopeo" ''
-              mkdir -p "''${HOME}/.config/containers"
-              if [ ! -e "''${HOME}/.config/containers/registries.conf" ]; then
-                printf 'unqualified-search-registries = ["docker.io"]\n' > "''${HOME}/.config/containers/registries.conf"
-              fi
-              exec ${pkgs.skopeo}/bin/skopeo "$@"
-            '';
+            packages = {
+              skopeo = pkgs.writeShellScriptBin "skopeo" ''
+                mkdir -p "''${HOME}/.config/containers"
+                if [ ! -e "''${HOME}/.config/containers/registries.conf" ]; then
+                  printf 'unqualified-search-registries = ["docker.io"]\n' > "''${HOME}/.config/containers/registries.conf"
+                fi
+                exec ${pkgs.skopeo}/bin/skopeo "$@"
+              '';
+            }
+            # Check-only image with the audit tooling. CI loads it and runs the
+            # entrypoint inside the container. The probe only supplies the CA
+            # store that the image ships, so the p11-kit output matches the
+            # filter the image applies.
+            // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
+              let
+                probe = lib.mkDockerImage {
+                  name = "trust-store-probe";
+                  Entrypoint = [ ];
+                };
+              in
+              {
+                dockerTrustStoreAudit = lib.mkDockerImage {
+                  name = "nix-lib-trust-store-audit";
+                  Entrypoint = [ "${dockerTrustStoreCheckScript}/bin/check-docker-trust-store" ];
+                  # Link /etc so the p11-kit output lands in the image closure.
+                  pathsToLink = [
+                    "/bin"
+                    "/etc"
+                  ];
+                  env = [
+                    "AFFECTED_EMSIGN_FINGERPRINTS=${pkgs.lib.concatStringsSep " " (builtins.attrValues probe.affectedEmsignRoots)}"
+                  ];
+                  extraContents = [
+                    dockerTrustStoreCheckScript
+                    pkgs.openssl
+                    pkgs.gawk
+                    pkgs.gnugrep
+                    pkgs.gnused
+                    pkgs.gnutar
+                    pkgs.gzip
+                    pkgs.jq
+                    probe.cacert.p11kit
+                  ];
+                };
+              }
+            );
 
             # Development shell for working on the library itself
             devShells.default = pkgs.mkShell {
@@ -235,7 +277,15 @@
                 system
                 rust-overlay
                 ;
-            });
+            })
+            // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
+              import ./lib/docker-trust-store-tests.nix {
+                inherit (pkgs) lib;
+                inherit pkgs system;
+                checkScript = dockerTrustStoreCheckScript;
+                project = libForSystem system;
+              }
+            );
           };
 
         flake = {

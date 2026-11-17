@@ -295,10 +295,44 @@ image = lib.mkDockerImage {
 };
 ```
 
-The image ships nixpkgs `cacert` (without the compromised
-`emSign ECC Root CA - G3`, blacklisted on older pins and removed upstream in
-nss-cacert >= 3.128) and sets `SSL_CERT_FILE` to it by default. Do not set your
-own `SSL_CERT_FILE` unless you need a different bundle.
+The image ships one CA store. The `cacert` derivation in `SSL_CERT_FILE` is the
+same derivation that `defaultBasePackages` installs. Do not pass another
+`cacert` through `extraContents` or `basePackages`. Do not set `SSL_CERT_FILE`
+unless you replace the store on purpose.
+
+#### emSign roots
+
+`mkDockerImage` removes `emSign ECC Root CA - G3` (SHA256
+`86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b`).
+GHSA-6q48-6c7w-9gw2 reports eight compromised eMudhra intermediates, and all of
+them chain to G3.
+
+The other emSign roots stay because they are not affected:
+
+- `emSign Root CA - G1`
+- `emSign Root CA - C1`
+- `emSign ECC Root CA - C3`
+
+The removal depends on the nixpkgs pin:
+
+- With nss-cacert before 3.128, the `cacert` blacklist removes G3 from the PEM
+  bundle and marks it `x-distrusted` in the p11-kit output.
+- With nss-cacert 3.128 or newer, stock `cacert` already omits G3. The blacklist
+  is not applied because `buildcatrust` exits with code 3 when a blacklist entry
+  is missing from `certdata.txt`.
+
+`release-25.05`, the oldest pin in these examples, uses nss-cacert 3.117 and
+takes the blacklist branch. The flake pins `release-26.05`, which uses
+nss-cacert 3.131.1 and takes the stock bundle.
+
+`nix flake check` runs these checks:
+
+- `dockerTrustStoreNewPin` and `dockerTrustStoreOldPin` build the image on the
+  pinned nixpkgs and on `release-25.05`.
+- `dockerTrustStoreGuard` covers the version guard.
+- `dockerTrustStoreNegative` proves that the checker detects an affected root.
+
+The `docker-trust-store` CI job repeats the audit inside a running container.
 
 ### Development Shells
 

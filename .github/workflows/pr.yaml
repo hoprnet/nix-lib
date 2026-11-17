@@ -60,6 +60,26 @@ jobs:
           cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           command: ./scripts/check-binary-cache.sh
 
+  # The flake checks validate the image tarball. This job repeats the audit
+  # inside a running container, so the check covers the image as it boots.
+  docker-trust-store:
+    name: Check Docker trust store
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Audit the trust store inside the image
+        uses: hoprnet/hopr-workflows/actions/nix-action@43c833e72dffe4f2f3be60193733e5657f8aa0d7 # nix-action-v2.0.0
+        with:
+          repo_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          command: |
+            set -euo pipefail
+            image="$(nix build .#dockerTrustStoreAudit --no-link --print-out-paths)"
+            docker load --input "$image"
+            docker run --rm nix-lib-trust-store-audit:latest
+
   # Single required check for the branch ruleset. `if: always()` runs it even
   # when a dependency fails; alls-green reds the gate on any non-success.
   merge-gate:
@@ -69,6 +89,7 @@ jobs:
       - conventional-title
       - flake-check
       - check-binary-cache
+      - docker-trust-store
     runs-on: depot-ubuntu-24.04
     permissions: {}
     steps:
