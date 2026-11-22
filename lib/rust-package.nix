@@ -177,8 +177,15 @@ let
   # build reuses the dependencies. Unsandboxed, the two directories differ, so
   # Cargo recompiles the dependencies in the final build. That is why this
   # stays off on Darwin: its builds are never sandboxed and its binaries are
-  # signed, so the hook would only slow every build down.
-  remapBuildDirHook = lib.optionalString buildPlatform.isLinux ''
+  # signed, so the hook would only slow every build down. Coverage builds stay
+  # out too: cargo-llvm-cov filters report paths by their real absolute
+  # location, which remapped paths would no longer match.
+  #
+  # The flags go through CARGO_BUILD_RUSTFLAGS, which Cargo ignores when a
+  # higher-precedence source applies: RUSTFLAGS, CARGO_ENCODED_RUSTFLAGS, or a
+  # matching `[target]` rustflags table in the project's .cargo/config.toml.
+  # Such projects do not get the remapping on Linux.
+  remapBuildDirHook = lib.optionalString (buildPlatform.isLinux && !runCoverage) ''
     export CARGO_BUILD_RUSTFLAGS="''${CARGO_BUILD_RUSTFLAGS:-} --remap-path-prefix=$NIX_BUILD_TOP=/build"
     export CFLAGS="''${CFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
     export CXXFLAGS="''${CXXFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
