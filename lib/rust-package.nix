@@ -277,10 +277,16 @@ let
   # alone made the dependency artifacts differ between otherwise identical
   # builds. Keep only the directives, in their original order, and keep the
   # file's mtime, which Cargo compares against rerun-if-changed inputs.
+  #
+  # The regex matches only `build/<pkg>-<hash>/output`, never a file named
+  # `output` that a build script generated under `out/`. Cargo trims each line
+  # before matching, so indented directives count. `-a` stops grep from
+  # treating the file as binary and dropping directives after a NUL byte.
   normalizeBuildScriptOutputHook = ''
-    find "''${CARGO_TARGET_DIR:-target}" -type f -path '*/build/*/output' -print0 \
+    find "''${CARGO_TARGET_DIR:-target}" -type f -regextype posix-extended \
+      -regex '.*/build/[^/]+/output' -print0 \
       | while IFS= read -r -d "" f; do
-          grep -E '^cargo::?' "$f" > "$f.directives" || true
+          grep -a -E '^[[:space:]]*cargo::?' "$f" > "$f.directives" || true
           touch -r "$f" "$f.directives"
           mv "$f.directives" "$f"
         done
