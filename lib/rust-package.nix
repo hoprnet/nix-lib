@@ -278,13 +278,14 @@ let
   # builds. Keep only the directives, in their original order, and keep the
   # file's mtime, which Cargo compares against rerun-if-changed inputs.
   #
-  # The regex matches only `build/<pkg>-<hash>/output`, never a file named
-  # `output` that a build script generated under `out/`. Cargo trims each line
-  # before matching, so indented directives count. `-a` stops grep from
-  # treating the file as binary and dropping directives after a NUL byte.
+  # find skips every build script's `out/` directory, so a generated file is
+  # never touched, even one at a path like `out/build/x/output`. Cargo trims
+  # each line before matching, so indented directives count. `-a` stops grep
+  # from treating the file as binary and dropping directives after a NUL byte.
   normalizeBuildScriptOutputHook = ''
-    find "''${CARGO_TARGET_DIR:-target}" -type f -regextype posix-extended \
-      -regex '.*/build/[^/]+/output' -print0 \
+    find "''${CARGO_TARGET_DIR:-target}" -regextype posix-extended \
+      \( -type d -regex '.*/build/[^/]+/out' -prune \) \
+      -o \( -type f -regex '.*/build/[^/]+/output' -print0 \) \
       | while IFS= read -r -d "" f; do
           grep -a -E '^[[:space:]]*cargo::?' "$f" > "$f.directives" || true
           touch -r "$f" "$f.directives"
