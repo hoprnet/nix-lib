@@ -295,6 +295,30 @@ let
     '';
   };
 
+  # Cargo saves each build script's stdout in `build/<pkg>-<hash>/output` and
+  # reads only its `cargo:` / `cargo::` directive lines back when it reuses the
+  # build. Everything else is log text, and some build scripts make it
+  # nondeterministic: tikv-jemalloc-sys runs jemalloc's configure and a
+  # parallel make whose lines arrive in a different order on every run. That
+  # alone made the dependency artifacts differ between otherwise identical
+  # builds. Keep only the directives, in their original order, and keep the
+  # file's mtime, which Cargo compares against rerun-if-changed inputs.
+  #
+  # find skips every build script's `out/` directory, so a generated file is
+  # never touched, even one at a path like `out/build/x/output`. Cargo trims
+  # each line before matching, so indented directives count. `-a` stops grep
+  # from treating the file as binary and dropping directives after a NUL byte.
+  normalizeBuildScriptOutputHook = ''
+    find "''${CARGO_TARGET_DIR:-target}" -regextype posix-extended \
+      \( -type d -regex '.*/build/[^/]+/out' -prune \) \
+      -o \( -type f -regex '.*/build/[^/]+/output' -print0 \) \
+      | while IFS= read -r -d "" f; do
+          grep -a -E '^[[:space:]]*cargo::?' "$f" > "$f.directives" || true
+          touch -r "$f" "$f.directives"
+          mv "$f.directives" "$f"
+        done
+  '';
+
   depsOnlyArgs =
     builtins.removeAttrs sharedArgs [
       "BUILD_VERSION"
@@ -304,6 +328,8 @@ let
     // {
       pname = pnameDeps;
       src = depsSrc;
+      # Runs after the build and before crane packs target/ in postInstall.
+      preInstall = normalizeBuildScriptOutputHook;
     }
     // lib.optionalAttrs runCoverage {
       # cargo-llvm-cov uses a separate instrumented target directory. Prepare
