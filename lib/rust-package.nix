@@ -174,19 +174,26 @@ let
   # differ from the sandboxed one. Map the build directory to /build so every
   # Linux build embeds the sandbox's paths. Both the dependency build and the
   # final build get the flags, so in the sandbox the flags match and the final
-  # build reuses the dependencies. Unsandboxed, the two directories differ, so
-  # Cargo recompiles the dependencies in the final build. That is why this
-  # stays off on Darwin: its builds are never sandboxed and its binaries are
-  # signed, so the hook would only slow every build down. Coverage builds stay
-  # out too: cargo-llvm-cov filters report paths by their real absolute
-  # location, which remapped paths would no longer match.
+  # build reuses the dependencies. Darwin stays out: its builds are never
+  # sandboxed and its binaries are signed, so they can't be byte-reproducible
+  # anyway. Coverage builds stay out too: cargo-llvm-cov filters report paths
+  # by their real absolute location, which remapped paths would no longer
+  # match.
   #
-  # The flags go through CARGO_BUILD_RUSTFLAGS, which Cargo ignores when a
-  # higher-precedence source applies: RUSTFLAGS, CARGO_ENCODED_RUSTFLAGS, or a
-  # matching `[target]` rustflags table in the project's .cargo/config.toml.
-  # Such projects do not get the remapping on Linux.
+  # The rustc flag goes through RUSTC_WRAPPER rather than rustflags. With
+  # --target, Cargo applies rustflags only to target crates, so proc macros
+  # and build scripts would keep the unsandboxed path. The wrapper reaches
+  # every rustc call, and it also works when RUSTFLAGS or a `[target]`
+  # rustflags table would make Cargo ignore CARGO_BUILD_RUSTFLAGS. Cargo
+  # doesn't fingerprint wrapper arguments, so an unsandboxed final build
+  # reuses most dependencies built in another directory. Only build scripts
+  # that watch CFLAGS, and the crates that depend on them, run again. This
+  # replaces any RUSTC_WRAPPER set in the environment.
+  remapBuildDirWrapper = pkgs.pkgsBuildBuild.writeShellScript "rustc-remap-build-dir" ''
+    exec "$@" "--remap-path-prefix=$NIX_BUILD_TOP=/build"
+  '';
   remapBuildDirHook = lib.optionalString (buildPlatform.isLinux && !runCoverage) ''
-    export CARGO_BUILD_RUSTFLAGS="''${CARGO_BUILD_RUSTFLAGS:-} --remap-path-prefix=$NIX_BUILD_TOP=/build"
+    export RUSTC_WRAPPER=${remapBuildDirWrapper}
     export CFLAGS="''${CFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
     export CXXFLAGS="''${CXXFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
   '';
