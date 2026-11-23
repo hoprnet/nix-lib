@@ -304,6 +304,16 @@ let
     // {
       pname = pnameDeps;
       src = depsSrc;
+      # A build script's `output` file records its whole stdout, and Cargo only
+      # reads the `cargo:` instructions back from it. Build scripts that run
+      # parallel tools, such as tikv-jemalloc-sys running `make -j`, log the
+      # other lines in a different order on every build, so the archived
+      # target directory differs between builds. Keep only the instructions,
+      # in their original order, before the archive is packed.
+      preInstall = ''
+        find "''${CARGO_TARGET_DIR:-target}" -type f -regex '.*/build/[^/]*/output' \
+          -exec sed -i -n '/^cargo:/p' {} +
+      '';
     }
     // lib.optionalAttrs runCoverage {
       # cargo-llvm-cov uses a separate instrumented target directory. Prepare
