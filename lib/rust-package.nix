@@ -309,10 +309,15 @@ let
       # parallel tools, such as tikv-jemalloc-sys running `make -j`, log the
       # other lines in a different order on every build, so the archived
       # target directory differs between builds. Keep only the instructions,
-      # in their original order, before the archive is packed.
+      # in their original order, before the archive is packed. Cargo trims
+      # each line before matching, so keep indented instructions too. Filter
+      # the same directory Crane archives, and skip it when it is absent, as
+      # Crane does.
       preInstall = ''
-        find "''${CARGO_TARGET_DIR:-target}" -type f -regex '.*/build/[^/]*/output' \
-          -exec sed -i -n '/^cargo:/p' {} +
+        if [ -d "''${CARGO_TARGET_DIR:-target}" ]; then
+          find "''${CARGO_TARGET_DIR:-target}" -type f -regex '.*/build/[^/]*/output' \
+            -exec sed -i -n '/^[[:space:]]*cargo:/p' {} +
+        fi
       '';
     }
     // lib.optionalAttrs runCoverage {
