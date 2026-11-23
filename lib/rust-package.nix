@@ -187,12 +187,16 @@ let
   # rustflags table would make Cargo ignore CARGO_BUILD_RUSTFLAGS. Cargo
   # doesn't fingerprint wrapper arguments, so an unsandboxed final build
   # reuses most dependencies built in another directory. Only build scripts
-  # that watch CFLAGS, and the crates that depend on them, run again. This
-  # replaces any RUSTC_WRAPPER set in the environment.
+  # that watch CFLAGS, and the crates that depend on them, run again. A
+  # RUSTC_WRAPPER already set in the environment, such as sccache, keeps
+  # running: this wrapper calls it with the same arguments.
   remapBuildDirWrapper = pkgs.pkgsBuildBuild.writeShellScript "rustc-remap-build-dir" ''
-    exec "$@" "--remap-path-prefix=$NIX_BUILD_TOP=/build"
+    exec ''${NIX_LIB_INNER_RUSTC_WRAPPER:+"$NIX_LIB_INNER_RUSTC_WRAPPER"} "$@" "--remap-path-prefix=$NIX_BUILD_TOP=/build"
   '';
   remapBuildDirHook = lib.optionalString (buildPlatform.isLinux && !runCoverage) ''
+    if [ "''${RUSTC_WRAPPER:-}" != ${remapBuildDirWrapper} ]; then
+      export NIX_LIB_INNER_RUSTC_WRAPPER="''${RUSTC_WRAPPER:-}"
+    fi
     export RUSTC_WRAPPER=${remapBuildDirWrapper}
     export CFLAGS="''${CFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
     export CXXFLAGS="''${CXXFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
