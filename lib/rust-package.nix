@@ -166,6 +166,31 @@ let
 
   opensslLibPath = lib.makeLibraryPath [ pkgs.pkgsBuildHost.openssl ];
 
+  # The Linux sandbox builds in /build, but unsandboxed Linux builds
+  # (`sandbox = false`, or Nix in a container without sandbox support) build in
+  # a random /nix/var/nix/builds/... directory. Absolute paths under it, such
+  # as file!() in code included from OUT_DIR and __FILE__ in C sources that
+  # build scripts compile there, end up in the binary, so the output would
+  # differ from the sandboxed one. Map the build directory to /build so every
+  # Linux build embeds the sandbox's paths. Both the dependency build and the
+  # final build get the flags, so in the sandbox the flags match and the final
+  # build reuses the dependencies. Unsandboxed, the two directories differ, so
+  # Cargo recompiles the dependencies in the final build. That is why this
+  # stays off on Darwin: its builds are never sandboxed and its binaries are
+  # signed, so the hook would only slow every build down. Coverage builds stay
+  # out too: cargo-llvm-cov filters report paths by their real absolute
+  # location, which remapped paths would no longer match.
+  #
+  # The flags go through CARGO_BUILD_RUSTFLAGS, which Cargo ignores when a
+  # higher-precedence source applies: RUSTFLAGS, CARGO_ENCODED_RUSTFLAGS, or a
+  # matching `[target]` rustflags table in the project's .cargo/config.toml.
+  # Such projects do not get the remapping on Linux.
+  remapBuildDirHook = lib.optionalString (buildPlatform.isLinux && !runCoverage) ''
+    export CARGO_BUILD_RUSTFLAGS="''${CARGO_BUILD_RUSTFLAGS:-} --remap-path-prefix=$NIX_BUILD_TOP=/build"
+    export CFLAGS="''${CFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
+    export CXXFLAGS="''${CXXFLAGS:-} -ffile-prefix-map=$NIX_BUILD_TOP=/build"
+  '';
+
   sharedArgsBase = {
     inherit
       pname
@@ -199,6 +224,7 @@ let
     doCheck = false;
     # set to the revision because during build the Git info is not available
     VERGEN_GIT_SHA = rev;
+    preConfigure = remapBuildDirHook;
   }
   // lib.optionalAttrs (buildVersion != null) { BUILD_VERSION = buildVersion; };
 
@@ -362,7 +388,7 @@ builder (
   // {
     inherit src postInstall;
 
-    preConfigure = ''
+    preConfigure = remapBuildDirHook + ''
       # respect the amount of available cores for building
       export CARGO_BUILD_JOBS=$NIX_BUILD_CORES
     '';
